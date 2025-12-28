@@ -1,0 +1,48 @@
+name: Code Quality & Validation
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  quality-checks:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type checking
+        run: pnpm run type-check
+
+      - name: ESLint validation
+        run: pnpm run lint
+
+      - name: Prettier format check
+        run: pnpm run format:check
+
+      - name: Build application
+        run: pnpm run build
+
+      - name: Run validation script
+        run: pnpm run validate
