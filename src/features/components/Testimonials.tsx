@@ -19,7 +19,7 @@ const testimonials: Testimonial[] = [
     name: "Priya Sharma",
     role: "Volunteer Coordinator",
     content:
-      "Working with Samrudhi Seva Trust has been the most fulfilling experience of my life. Seeing the smiles on children's faces when we distribute food makes every effort worthwhile.",
+      "Working with samriddhi Seva Trust has been the most fulfilling experience of my life. Seeing the smiles on children's faces when we distribute food makes every effort worthwhile.",
     image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400",
     rating: 5,
   },
@@ -28,7 +28,7 @@ const testimonials: Testimonial[] = [
     name: "Rajesh Kumar",
     role: "Corporate Donor",
     content:
-      "As a business owner, I wanted to give back to society. Samrudhi Seva Trust's transparent operations and genuine impact made it an easy choice. They're doing incredible work.",
+      "As a business owner, I wanted to give back to society. samriddhi Seva Trust's transparent operations and genuine impact made it an easy choice. They're doing incredible work.",
     image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400",
     rating: 5,
   },
@@ -37,7 +37,7 @@ const testimonials: Testimonial[] = [
     name: "Anita Deshmukh",
     role: "Community Member",
     content:
-      "The blood donation drives organized by Samrudhi have saved countless lives, including my own father's. Their dedication to serving humanity goes beyond words.",
+      "The blood donation drives organized by samriddhi have saved countless lives, including my own father's. Their dedication to serving humanity goes beyond words.",
     image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400",
     rating: 5,
   },
@@ -55,7 +55,7 @@ const testimonials: Testimonial[] = [
     name: "Meera Nair",
     role: "Teacher",
     content:
-      "The educational support program has transformed the lives of my students. Samrudhi's dedication to child welfare is truly inspiring and making a real difference.",
+      "The educational support program has transformed the lives of my students. samriddhi's dedication to child welfare is truly inspiring and making a real difference.",
     image: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=400",
     rating: 5,
   },
@@ -64,7 +64,7 @@ const testimonials: Testimonial[] = [
     name: "Amit Singh",
     role: "Event Organizer",
     content:
-      "Collaborating with Samrudhi Seva Trust for community events has been seamless. Their professionalism and genuine care for people is evident in everything they do.",
+      "Collaborating with samriddhi Seva Trust for community events has been seamless. Their professionalism and genuine care for people is evident in everything they do.",
     image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400",
     rating: 5,
   },

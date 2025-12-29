@@ -9,9 +9,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Samrudhi Seva Trust - Serving Humanity, One Meal at a Time",
+  title: "Samriddhi Seva Trust - Serving Humanity, One Meal at a Time",
   description:
-    "Join Samrudhi Seva Trust in our mission to rescue surplus food, provide life-saving blood, and nurture children in need. Together, we transform lives across communities.",
+    "Join Samriddhi Seva Trust in our mission to rescue surplus food, provide life-saving blood, and nurture children in need. Together, we transform lives across communities.",
   keywords: [
     "NGO",
     "charity",
@@ -24,21 +24,21 @@ export const metadata: Metadata = {
     "community service",
     "humanitarian aid",
   ],
-  authors: [{ name: "Samrudhi Seva Trust" }],
-  creator: "Samrudhi Seva Trust",
-  publisher: "Samrudhi Seva Trust",
+  authors: [{ name: "Samriddhi Seva Trust" }],
+  creator: "Samriddhi Seva Trust",
+  publisher: "Samriddhi Seva Trust",
   openGraph: {
-    title: "Samrudhi Seva Trust - Serving Humanity, One Meal at a Time",
+    title: "Samriddhi Seva Trust - Serving Humanity, One Meal at a Time",
     description:
       "Join us in making a difference through food rescue, blood donation drives, and child welfare programs.",
     url: "https://samrudhisevatrust.org",
-    siteName: "Samrudhi Seva Trust",
+    siteName: "Samriddhi Seva Trust",
     images: [
       {
         url: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=1200&h=630",
         width: 1200,
         height: 630,
-        alt: "Samrudhi Seva Trust - Community Service",
+        alt: "samriddhi Seva Trust - Community Service",
       },
     ],
     locale: "en_US",
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Samrudhi Seva Trust - Serving Humanity",
+    title: "Samriddhi Seva Trust - Serving Humanity",
     description:
       "Join us in making a difference through food rescue, blood donation, and child welfare.",
     images: [
@@ -84,10 +84,10 @@ export default function RootLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "NGO",
-              name: "Samrudhi Seva Trust",
-              alternateName: "Samrudhi Trust",
+              name: "Samriddhi Seva Trust",
+              alternateName: "Samriddhi Trust",
               url: "https://samrudhisevatrust.org",
-              logo: "https://samrudhisevatrust.org/logo.png",
+              logo: "https://samrudhisevatrust.org/logo.svg",
               description:
                 "A non-profit organization dedicated to food rescue, blood donation drives, and child welfare programs.",
               foundingDate: "2020",
@@ -102,9 +102,9 @@ export default function RootLayout({
               ],
               contactPoint: {
                 "@type": "ContactPoint",
-                telephone: "+91-1234567890",
+                telephone: "+91-9776391244",
                 contactType: "Customer Service",
-                email: "info@samrudhisevatrust.org",
+                email: "samriddhisevatrust2022@gmail.com",
                 availableLanguage: ["English", "Hindi"],
               },
             }),

@@ -1,6 +1,6 @@
-# Samrudhi Seva Trust - Official Website
+# samriddhi Seva Trust - Official Website
 
-A modern, fully optimized Next.js website for Samrudhi Seva Trust NGO, featuring beautiful animations, dynamic content, and comprehensive SEO optimization.
+A modern, fully optimized Next.js website for samriddhi Seva Trust NGO, featuring beautiful animations, dynamic content, and comprehensive SEO optimization.
 
 ## 🚀 Features
 
@@ -52,7 +52,7 @@ A modern, fully optimized Next.js website for Samrudhi Seva Trust NGO, featuring
 ## 📁 Project Structure
 
 ```
-samrudhi-trust/
+samriddhi-trust/
 ├── src/
 │   ├── app/
 │   │   ├── layout.tsx          # Root layout with SEO
@@ -97,7 +97,7 @@ samrudhi-trust/
 
 ```bash
 git clone <repository-url>
-cd samrudhi-trust
+cd samriddhi-trust
 ```
 
 2. Install dependencies:
@@ -225,4 +225,4 @@ This project is licensed under the MIT License.
 
 ---
 
-Built with ❤️ for Samrudhi Seva Trust
+Built with ❤️ for samriddhi Seva Trust

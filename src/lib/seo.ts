@@ -14,7 +14,7 @@ export function generateSEO(config: SEOConfig): Metadata {
     description,
     keywords,
     image = "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=1200&h=630",
-    url = "https://samrudhisevatrust.org",
+    url = "https://samriddhisevatrust.org",
   } = config;
 
   return {
@@ -25,7 +25,7 @@ export function generateSEO(config: SEOConfig): Metadata {
       title,
       description,
       url,
-      siteName: "Samrudhi Seva Trust",
+      siteName: "Samriddhi Seva Trust",
       images: [
         {
           url: image,

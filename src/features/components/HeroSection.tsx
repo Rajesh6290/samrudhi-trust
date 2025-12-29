@@ -58,7 +58,7 @@ const HeroSection: React.FC = () => {
               transition={{ delay: 0.7, duration: 0.8 }}
               className="text-emerald-50/90  md:text-2xl max-w-2xl mb-12 font-medium leading-relaxed"
             >
-              Join Samrudhi Seva Trust in our mission to rescue surplus food,
+              Join samriddhi Seva Trust in our mission to rescue surplus food,
               provide life-saving blood, and nurture children in need. Together,
               we can make a difference.
             </motion.p>

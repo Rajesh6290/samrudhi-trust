@@ -38,7 +38,7 @@ const OurStory = () => {
             Compassion in every action.
           </h2>
           <p className="text-slate-600 text-lg leading-relaxed mb-8">
-            Samrudhi Seva Trust was founded on a simple realization: that
+            samriddhi Seva Trust was founded on a simple realization: that
             abundance exists, but it {"doesn't"} always reach those in need. We
             act as the bridge between surplus and scarcity.
           </p>

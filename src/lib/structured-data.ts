@@ -2,8 +2,8 @@ export const structuredData = {
   organization: {
     "@context": "https://schema.org",
     "@type": "NGO",
-    name: "Samrudhi Seva Trust",
-    alternateName: "Samrudhi Trust",
+    name: "samriddhi Seva Trust",
+    alternateName: "samriddhi Trust",
     url: "https://samrudhisevatrust.org",
     logo: "https://samrudhisevatrust.org/logo.png",
     description:
@@ -55,7 +55,7 @@ export const structuredData = {
     },
     organizer: {
       "@type": "Organization",
-      name: "Samrudhi Seva Trust",
+      name: "samriddhi Seva Trust",
       url: "https://samrudhisevatrust.org",
     },
   }),

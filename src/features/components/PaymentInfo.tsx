@@ -16,7 +16,7 @@ import Image from "next/image";
 const PaymentInfo = () => {
   const upiID = "samrudhiseva@okaxis";
   const bankDetails = {
-    accountName: "Samrudhi Seva Trust",
+    accountName: "samriddhi Seva Trust",
     accountNumber: "1234567890123456",
     ifscCode: "UTIB0001234",
     bankName: "Axis Bank",

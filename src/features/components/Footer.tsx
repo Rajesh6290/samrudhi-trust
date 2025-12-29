@@ -17,9 +17,9 @@ const Footer = () => {
                   alt="trust-image"
                 />
               </div>
-              <span className="text-2xl font-black tracking-tighter text-white">
-                SAMRUDHI{" "}
-                <span className="text-orange-500 font-black">SEVA</span>
+              <span className="text-2xl uppercase font-black tracking-tighter text-white">
+                samriddhi <br />
+                <span className="text-orange-500 font-black">SEVA Trust</span>
               </span>
             </div>
             <p className="text-gray-400 leading-relaxed mb-4">
@@ -166,7 +166,7 @@ const Footer = () => {
                   Service of Others."`}
               </p>
               <p className="text-gray-500 text-sm">
-                © 2022 - {new Date().getFullYear()} Samrudhi Seva Trust. All
+                © 2022 - {new Date().getFullYear()} samriddhi Seva Trust. All
                 Rights Reserved.
               </p>
             </div>
