@@ -36,20 +36,41 @@ const FeedBackPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsSubmitting(false);
-    setIsSubmitted(true);
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setFormData({
-        name: "",
-        email: "",
-        rating: 0,
-        category: "",
-        feedback: "",
-        anonymous: false,
+
+    try {
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.anonymous ? "Anonymous" : formData.name,
+          email: formData.email,
+          message: formData.feedback,
+          rating: formData.rating,
+        }),
       });
-    }, 3000);
+
+      if (response.ok) {
+        setIsSubmitted(true);
+        setTimeout(() => {
+          setIsSubmitted(false);
+          setFormData({
+            name: "",
+            email: "",
+            rating: 0,
+            category: "",
+            feedback: "",
+            anonymous: false,
+          });
+        }, 3000);
+      } else {
+        alert("Failed to submit feedback. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      alert("An error occurred. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (
@@ -103,7 +124,7 @@ const FeedBackPage = () => {
       </section>
 
       {/* Feedback Form Section */}
-      <section className="py-20 bg-gradient-to-br from-emerald-50 via-white to-teal-50">
+      <section className="py-20 bg-linear-to-br from-emerald-50 via-white to-teal-50">
         <div className="container mx-auto px-6">
           <div className="max-w-3xl mx-auto">
             <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8 md:p-12 border border-emerald-100">

@@ -5,18 +5,64 @@ import {
   Gift,
   Globe,
   GraduationCap,
+  Heart,
+  Home,
+  Shield,
   Utensils,
+  Users,
   Zap,
 } from "lucide-react";
-import React from "react";
+import React, { useEffect, useState } from "react";
+
+interface Service {
+  _id: string;
+  icon: string;
+  title: string;
+  description: string;
+  order: number;
+  isActive: boolean;
+}
+
+const iconMap: Record<string, React.ReactNode> = {
+  Utensils: <Utensils size={32} />,
+  Gift: <Gift size={32} />,
+  Zap: <Zap size={32} />,
+  Droplet: <Droplet size={32} />,
+  GraduationCap: <GraduationCap size={32} />,
+  Globe: <Globe size={32} />,
+  Heart: <Heart size={32} />,
+  Users: <Users size={32} />,
+  Home: <Home size={32} />,
+  Shield: <Shield size={32} />,
+};
 
 const WhatWeDo = () => {
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const res = await fetch("/api/services?active=true");
+        const data = await res.json();
+        setServices(data.services || []);
+      } catch (error) {
+        console.error("Failed to fetch services:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, []);
+
   const FADE_UP = {
     initial: { opacity: 0, y: 30 },
     whileInView: { opacity: 1, y: 0 },
     viewport: { once: true },
     transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const },
   };
+
   return (
     <section id="work" className="py-32 bg-slate-50">
       <div className="container mx-auto px-6">
@@ -29,57 +75,41 @@ const WhatWeDo = () => {
           </h2>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
-          {[
-            {
-              icon: <Utensils size={32} />,
-              title: "Daily Hospital Feeding",
-              desc: "Providing breakfast and lunch to patient attendees at government hospitals who often go hungry to save money for treatment.",
-            },
-            {
-              icon: <Gift size={32} />,
-              title: "Orphan Support",
-              desc: "Sponsoring uniforms, books, and medical camps for 12+ partner children's homes in urban and rural clusters.",
-            },
-            {
-              icon: <Zap size={32} />,
-              title: "Event Food Rescue",
-              desc: "Collaborating with wedding halls and caterers to collect untouched surplus food and distribute it to street dwellers within 2 hours.",
-            },
-            {
-              icon: <Droplet size={32} />,
-              title: "Blood Helpline",
-              desc: "An automated and manual coordination network that connects blood donors with families in medical distress.",
-            },
-            {
-              icon: <GraduationCap size={32} />,
-              title: "Skill Centers",
-              desc: "Training young adults from low-income families in basic computer literacy and vocational skills.",
-            },
-            {
-              icon: <Globe size={32} />,
-              title: "Emergency Relief",
-              desc: "Immediate response team for food, water, and clothing distribution during natural calamities and floods.",
-            },
-          ].map((service, idx) => (
-            <motion.div
-              key={idx}
-              {...FADE_UP}
-              whileHover={{ y: -10 }}
-              className="bg-white p-12 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 group"
-            >
-              <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-500">
-                {service.icon}
-              </div>
-              <h3 className="text-2xl font-black text-slate-800 mb-4">
-                {service.title}
-              </h3>
-              <p className="text-slate-500 leading-relaxed font-medium">
-                {service.desc}
-              </p>
-            </motion.div>
-          ))}
-        </div>
+        {loading ? (
+          <div className="grid md:grid-cols-3 gap-8">
+            {[...Array(6)].map((_, idx) => (
+              <div
+                key={idx}
+                className="bg-white p-12 rounded-[2.5rem] shadow-xl h-72 animate-pulse"
+              />
+            ))}
+          </div>
+        ) : services.length === 0 ? (
+          <div className="text-center text-slate-500 py-20">
+            <p className="text-xl">No services available at the moment.</p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-3 gap-8">
+            {services.map((service) => (
+              <motion.div
+                key={service._id}
+                {...FADE_UP}
+                whileHover={{ y: -10 }}
+                className="bg-white p-12 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 group"
+              >
+                <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-500">
+                  {iconMap[service.icon] || <Utensils size={32} />}
+                </div>
+                <h3 className="text-2xl font-black text-slate-800 mb-4">
+                  {service.title}
+                </h3>
+                <p className="text-slate-500 leading-relaxed font-medium">
+                  {service.description}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

@@ -3,6 +3,8 @@ import { Menu, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
+import { useAuth } from "@/features/hooks/useAuth";
+
 const cn = (...classes: string[]) => classes.filter(Boolean).join(" ");
 const NavLink = ({
   href,
@@ -29,6 +31,7 @@ const NavLink = ({
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -55,9 +58,8 @@ const Navbar = () => {
     >
       <div className="container mx-auto px-6 flex justify-between items-center">
         <Link href="/" className="flex items-center gap-3">
-          <div>
-            <Image src="/logo.svg" width={50} height={50} alt="trust-image" />
-          </div>
+          <Image src="/logo.svg" width={50} height={50} alt="trust-image" />
+
           <span
             className={cn(
               "text-2xl font-black uppercase tracking-tighter",
@@ -72,12 +74,6 @@ const Navbar = () => {
         <nav className="hidden lg:flex items-center gap-8">
           <NavLink href="/" isScrolled={isScrolled}>
             Home
-          </NavLink>
-          <NavLink href="/#about" isScrolled={isScrolled}>
-            About
-          </NavLink>
-          <NavLink href="/#work" isScrolled={isScrolled}>
-            Work
           </NavLink>
           <NavLink href="/gallary" isScrolled={isScrolled}>
             Gallery
@@ -97,6 +93,22 @@ const Navbar = () => {
           >
             Contact Now
           </a>
+          {!isLoading &&
+            (isAuthenticated ? (
+              <a
+                href="/admin/dashboard"
+                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-8 py-3 rounded-full font-black text-sm uppercase tracking-widest transition-all hover:scale-105 shadow-lg active:scale-95"
+              >
+                Dashboard
+              </a>
+            ) : (
+              <a
+                href="/admin/login"
+                className="bg-slate-700 hover:bg-slate-800 text-white px-8 py-3 rounded-full font-black text-sm uppercase tracking-widest transition-all hover:scale-105 shadow-lg active:scale-95"
+              >
+                Sign In
+              </a>
+            ))}
         </nav>
 
         <button
@@ -113,12 +125,6 @@ const Navbar = () => {
           <nav className="flex flex-col items-center gap-6 p-8">
             <NavLink href="/" isScrolled={true} onClick={closeMobileMenu}>
               Home
-            </NavLink>
-            <NavLink href="/#about" isScrolled={true} onClick={closeMobileMenu}>
-              About
-            </NavLink>
-            <NavLink href="/#work" isScrolled={true} onClick={closeMobileMenu}>
-              Work
             </NavLink>
             <NavLink
               href="/gallary"
@@ -147,6 +153,24 @@ const Navbar = () => {
             >
               Contact Now
             </a>
+            {!isLoading &&
+              (isAuthenticated ? (
+                <a
+                  href="/admin/dashboard"
+                  onClick={closeMobileMenu}
+                  className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-8 py-3 rounded-full font-black text-sm uppercase tracking-widest transition-all hover:scale-105 shadow-lg active:scale-95 mt-4"
+                >
+                  Dashboard
+                </a>
+              ) : (
+                <a
+                  href="/admin/login"
+                  onClick={closeMobileMenu}
+                  className="bg-slate-700 hover:bg-slate-800 text-white px-8 py-3 rounded-full font-black text-sm uppercase tracking-widest transition-all hover:scale-105 shadow-lg active:scale-95 mt-4"
+                >
+                  Sign In
+                </a>
+              ))}
           </nav>
         </div>
       )}

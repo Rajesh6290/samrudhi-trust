@@ -4,53 +4,13 @@ import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
 interface Video {
-  id: number;
+  _id: string;
   title: string;
   description: string;
-  thumbnail: string;
-  videoUrl: string;
-  duration: string;
+  image: string;
   category: string;
+  date: string;
 }
-
-const videos: Video[] = [
-  {
-    id: 1,
-    title: "Food Distribution Drive 2024",
-    description:
-      "Watch how we distribute fresh meals to underprivileged communities daily.",
-    thumbnail:
-      "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=800",
-    videoUrl:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-    duration: "3:24",
-    category: "Food Rescue",
-  },
-  {
-    id: 2,
-    title: "Blood Donation Camp Success",
-    description:
-      "Our recent blood donation camp saved over 100 lives. See the impact.",
-    thumbnail:
-      "https://images.unsplash.com/photo-1542810634-71277d95dcbb?w=800",
-    videoUrl:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-    duration: "2:45",
-    category: "Health",
-  },
-  {
-    id: 3,
-    title: "Children's Education Program",
-    description:
-      "Supporting education for 500+ children through our welfare initiatives.",
-    thumbnail:
-      "https://images.unsplash.com/photo-1509099836639-18ba1795216d?w=800",
-    videoUrl:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-    duration: "4:12",
-    category: "Education",
-  },
-];
 
 interface VideoCardProps {
   video: Video;
@@ -117,8 +77,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, index }) => {
       <div className="relative aspect-video overflow-hidden bg-slate-900">
         <video
           ref={videoRef}
-          src={video.videoUrl}
-          poster={video.thumbnail}
+          src={video.image}
           className="w-full h-full object-cover"
           muted={isMuted}
           playsInline
@@ -143,13 +102,6 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, index }) => {
               )}
             </button>
           </div>
-
-          {/* Duration Badge */}
-          {!isPlaying && (
-            <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-bold">
-              {video.duration}
-            </div>
-          )}
 
           {/* Category Badge */}
           {!isPlaying && (
@@ -194,7 +146,9 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, index }) => {
         <h3 className="text-2xl font-black text-slate-900 mb-3 group-hover:text-orange-500 transition-colors">
           {video.title}
         </h3>
-        <p className="text-slate-600 leading-relaxed">{video.description}</p>
+        <p className="text-slate-600 leading-relaxed">
+          {video.description || ""}
+        </p>
       </div>
 
       {/* Hover Border Effect */}
@@ -204,6 +158,36 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, index }) => {
 };
 
 const VideoSection: React.FC = () => {
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchVideos = async () => {
+      try {
+        const res = await fetch("/api/gallery?active=true");
+        const data = await res.json();
+
+        // Filter for video files
+        const videoItems = (data.items || []).filter(
+          (item: Video) =>
+            item.image &&
+            (item.image.includes(".mp4") ||
+              item.image.includes(".mov") ||
+              item.image.includes(".webm") ||
+              item.image.includes("video"))
+        );
+
+        setVideos(videoItems);
+      } catch (error) {
+        console.error("Failed to fetch videos:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVideos();
+  }, []);
+
   return (
     <section className="py-32 bg-linear-to-b from-white to-slate-50">
       <div className="container mx-auto px-6">
@@ -226,24 +210,43 @@ const VideoSection: React.FC = () => {
           </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {videos.map((video, index) => (
-            <VideoCard key={video.id} video={video} index={index} />
-          ))}
-        </div>
+        {loading ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[...Array(3)].map((_, idx) => (
+              <div
+                key={idx}
+                className="bg-white rounded-3xl overflow-hidden shadow-2xl h-96 animate-pulse"
+              />
+            ))}
+          </div>
+        ) : videos.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-slate-500 text-lg">
+              No videos available at the moment. Check back soon!
+            </p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {videos.map((video, index) => (
+              <VideoCard key={video._id} video={video} index={index} />
+            ))}
+          </div>
+        )}
 
         {/* CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.7, delay: 0.3 }}
-          className="text-center mt-16"
-        >
-          <button className="bg-slate-900 hover:bg-slate-800 text-white px-10 py-5 rounded-2xl font-black text-lg transition-all hover:-translate-y-1 shadow-xl">
-            View All Videos
-          </button>
-        </motion.div>
+        {videos.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7, delay: 0.3 }}
+            className="text-center mt-16"
+          >
+            <button className="bg-slate-900 hover:bg-slate-800 text-white px-10 py-5 rounded-2xl font-black text-lg transition-all hover:-translate-y-1 shadow-xl">
+              View All Videos
+            </button>
+          </motion.div>
+        )}
       </div>
     </section>
   );

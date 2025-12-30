@@ -2,6 +2,15 @@
 import { useInView } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 
+interface Stat {
+  _id: string;
+  title: string;
+  value: number;
+  suffix: string;
+  order: number;
+  isActive: boolean;
+}
+
 const ImpactCounter = ({
   value,
   title,
@@ -59,6 +68,25 @@ const ImpactCounter = ({
 };
 
 const RealTimeImpact = () => {
+  const [stats, setStats] = useState<Stat[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch("/api/stats?active=true");
+        const data = await res.json();
+        setStats(data.stats || []);
+      } catch (error) {
+        console.error("Failed to fetch stats:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
   return (
     <section id="impact" className="py-24 bg-white">
       <div className="max-w-7xl mx-auto px-6">
@@ -70,12 +98,32 @@ const RealTimeImpact = () => {
             Serving continuously since 2022
           </p>
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-          <ImpactCounter value={12500} title="Meals Served" suffix="+" />
-          <ImpactCounter value={720} title="Families Helped" suffix="+" />
-          <ImpactCounter value={280} title="Blood Requests" suffix="+" />
-          <ImpactCounter value={135} title="Active Volunteers" />
-        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, idx) => (
+              <div
+                key={idx}
+                className="h-32 bg-slate-100 rounded-3xl animate-pulse"
+              />
+            ))}
+          </div>
+        ) : stats.length === 0 ? (
+          <div className="text-center text-slate-500 py-12">
+            <p>No statistics available at the moment.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            {stats.map((stat) => (
+              <ImpactCounter
+                key={stat._id}
+                value={stat.value}
+                title={stat.title}
+                suffix={stat.suffix}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

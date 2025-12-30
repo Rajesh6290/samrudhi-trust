@@ -1,186 +1,76 @@
 "use client";
-import React, { useState } from "react";
-import DefaultLayouts from "../layouts/DefaultLayouts";
-import BackgroundSlider from "../components/BackgroundSlider";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  X,
-  Play,
-  Image as ImageIcon,
-  Video,
-  Heart,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Heart,
+  Image as ImageIcon,
+  X,
 } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
+import { useEffect, useState } from "react";
+import BackgroundSlider from "../components/BackgroundSlider";
+import DefaultLayouts from "../layouts/DefaultLayouts";
 
 interface GalleryItem {
-  id: number;
-  type: "image" | "video";
-  src: string;
-  thumbnail: string;
+  _id: string;
   title: string;
+  description?: string;
+  image: string;
+  images: string[];
   category: string;
+  isActive: boolean;
   date: string;
-  likes: number;
+  createdAt: string;
 }
 
-const galleryData: GalleryItem[] = [
-  // Food Distribution
-  {
-    id: 1,
-    type: "image",
-    src: "https://images.unsplash.com/photo-1593113646773-028c64a8f1b8?w=800",
-    thumbnail:
-      "https://images.unsplash.com/photo-1593113646773-028c64a8f1b8?w=400",
-    title: "Community Food Distribution Drive",
-    category: "Food Distribution",
-    date: "Dec 2024",
-    likes: 245,
-  },
-  {
-    id: 2,
-    type: "image",
-    src: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=800",
-    thumbnail:
-      "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=400",
-    title: "Feeding the Underprivileged",
-    category: "Food Distribution",
-    date: "Nov 2024",
-    likes: 189,
-  },
-  // Blood Donation
-  {
-    id: 3,
-    type: "image",
-    src: "https://images.unsplash.com/photo-1615461066159-fea0960485d5?w=800",
-    thumbnail:
-      "https://images.unsplash.com/photo-1615461066159-fea0960485d5?w=400",
-    title: "Annual Blood Donation Camp",
-    category: "Blood Donation",
-    date: "Dec 2024",
-    likes: 312,
-  },
-  {
-    id: 4,
-    type: "video",
-    src: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    thumbnail:
-      "https://images.unsplash.com/photo-1615461066841-6116e61058f4?w=400",
-    title: "Life-Saving Blood Drive",
-    category: "Blood Donation",
-    date: "Oct 2024",
-    likes: 456,
-  },
-  // Child Welfare
-  {
-    id: 5,
-    type: "image",
-    src: "https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=800",
-    thumbnail:
-      "https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=400",
-    title: "Children's Education Program",
-    category: "Child Welfare",
-    date: "Nov 2024",
-    likes: 523,
-  },
-  {
-    id: 6,
-    type: "image",
-    src: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=800",
-    thumbnail:
-      "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=400",
-    title: "Joy of Learning",
-    category: "Child Welfare",
-    date: "Dec 2024",
-    likes: 398,
-  },
-  // Community Events
-  {
-    id: 7,
-    type: "video",
-    src: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    thumbnail:
-      "https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400",
-    title: "Community Awareness Event",
-    category: "Events",
-    date: "Nov 2024",
-    likes: 267,
-  },
-  {
-    id: 8,
-    type: "image",
-    src: "https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800",
-    thumbnail:
-      "https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=400",
-    title: "Volunteer Team Building",
-    category: "Events",
-    date: "Oct 2024",
-    likes: 445,
-  },
-  // Healthcare
-  {
-    id: 9,
-    type: "image",
-    src: "https://images.unsplash.com/photo-1584982751601-97dcc096659c?w=800",
-    thumbnail:
-      "https://images.unsplash.com/photo-1584982751601-97dcc096659c?w=400",
-    title: "Free Health Checkup Camp",
-    category: "Healthcare",
-    date: "Dec 2024",
-    likes: 334,
-  },
-  {
-    id: 10,
-    type: "image",
-    src: "https://images.unsplash.com/photo-1631815588090-d4bfec5b1ccb?w=800",
-    thumbnail:
-      "https://images.unsplash.com/photo-1631815588090-d4bfec5b1ccb?w=400",
-    title: "Medical Assistance Drive",
-    category: "Healthcare",
-    date: "Nov 2024",
-    likes: 289,
-  },
-  // Women Empowerment
-  {
-    id: 11,
-    type: "image",
-    src: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800",
-    thumbnail:
-      "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400",
-    title: "Women Skill Development",
-    category: "Women Empowerment",
-    date: "Dec 2024",
-    likes: 412,
-  },
-  {
-    id: 12,
-    type: "video",
-    src: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    thumbnail:
-      "https://images.unsplash.com/photo-1544717297-fa95b6ee9643?w=400",
-    title: "Empowering Women Leaders",
-    category: "Women Empowerment",
-    date: "Nov 2024",
-    likes: 378,
-  },
-];
-
-const categories = [
-  "All",
-  ...Array.from(new Set(galleryData.map((item) => item.category))),
-];
-
 const GallaryPage = () => {
+  const [galleryData, setGalleryData] = useState<GalleryItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
-  const [likedItems, setLikedItems] = useState<Set<number>>(new Set());
+  const [likedItems, setLikedItems] = useState<Set<string>>(new Set());
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const fetchGallery = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (startDate) params.append("startDate", startDate);
+      if (endDate) params.append("endDate", endDate);
+
+      const url = params.toString()
+        ? `/api/gallery?${params.toString()}`
+        : "/api/gallery";
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        setGalleryData(data.items || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch gallery:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchGallery();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, endDate]);
+
+  const categories = [
+    "All",
+    ...Array.from(new Set(galleryData.map((item) => item.category))),
+  ];
 
   const filteredItems =
     selectedCategory === "All"
       ? galleryData
       : galleryData.filter((item) => item.category === selectedCategory);
 
-  const handleLike = (id: number) => {
+  const handleLike = (id: string) => {
     setLikedItems((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(id)) {
@@ -190,6 +80,130 @@ const GallaryPage = () => {
       }
       return newSet;
     });
+  };
+
+  // Auto-rotating Image Carousel Component for cards
+  const CardImageCarousel = ({ images }: { images: string[] }) => {
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    useEffect(() => {
+      if (images.length > 1) {
+        const interval = setInterval(() => {
+          setCurrentIndex((prev) => (prev + 1) % images.length);
+        }, 3000); // Auto-rotate every 3 seconds
+
+        return () => clearInterval(interval);
+      }
+    }, [images.length]);
+
+    if (images.length === 0) return null;
+
+    return (
+      <div className="relative h-64 w-full overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentIndex}
+            initial={{ opacity: 0, scale: 1.1 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.7 }}
+            className="absolute inset-0"
+          >
+            <Image
+              src={images[currentIndex]}
+              alt={`Image ${currentIndex + 1}`}
+              fill
+              className="object-cover"
+            />
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Image counter badge */}
+        {images.length > 1 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-xs font-bold z-10"
+          >
+            {currentIndex + 1} / {images.length}
+          </motion.div>
+        )}
+
+        {/* Indicators */}
+        {images.length > 1 && (
+          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-10">
+            {images.map((_, index) => (
+              <div
+                key={index}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  currentIndex === index ? "bg-white w-8" : "bg-white/50 w-1.5"
+                }`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Manual control Image Carousel for modal
+  const ModalImageCarousel = ({ images }: { images: string[] }) => {
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    const goToNext = () => {
+      setCurrentIndex((prev) => (prev + 1) % images.length);
+    };
+
+    const goToPrevious = () => {
+      setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+    };
+
+    if (images.length === 0) return null;
+
+    return (
+      <div className="relative w-full h-[70vh] bg-black rounded-lg overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentIndex}
+            initial={{ opacity: 0, x: 100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -100 }}
+            transition={{ duration: 0.3 }}
+            className="absolute inset-0"
+          >
+            <Image
+              src={images[currentIndex]}
+              alt={`Image ${currentIndex + 1}`}
+              fill
+              className="object-contain"
+            />
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Navigation buttons */}
+        {images.length > 1 && (
+          <>
+            <button
+              onClick={goToPrevious}
+              className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-white/90 hover:bg-white rounded-full shadow-lg transition-all hover:scale-110 z-10"
+            >
+              <ChevronLeft className="w-6 h-6 text-slate-900" />
+            </button>
+            <button
+              onClick={goToNext}
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/90 hover:bg-white rounded-full shadow-lg transition-all hover:scale-110 z-10"
+            >
+              <ChevronRight className="w-6 h-6 text-slate-900" />
+            </button>
+
+            {/* Counter */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-bold z-10">
+              {currentIndex + 1} / {images.length}
+            </div>
+          </>
+        )}
+      </div>
+    );
   };
 
   const backgroundImages = [
@@ -210,7 +224,12 @@ const GallaryPage = () => {
         />
 
         <div className="container mx-auto px-6 relative z-10">
-          <div className="max-w-4xl mx-auto text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="max-w-4xl mx-auto text-center"
+          >
             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-6 py-2 rounded-full mb-6">
               <ImageIcon className="w-5 h-5" />
               <span className="text-sm font-semibold tracking-wider uppercase">
@@ -222,36 +241,128 @@ const GallaryPage = () => {
               Gallery of <span className="text-orange-400">Impact</span>
             </h1>
 
-            <p className="text-xl text-emerald-100 max-w-2xl mx-auto">
+            <p className="text-xl text-emerald-100 max-w-2xl mx-auto font-medium">
               Witness the moments that matter. Explore our collection of photos
-              and videos showcasing our initiatives and the lives {"we've"}{" "}
-              touched.
+              showcasing our initiatives and the lives {"we've"} touched.
             </p>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Category Filter */}
       <div className="sticky top-20 z-40 bg-white/95 backdrop-blur-xl shadow-md py-6 border-b border-emerald-100">
         <div className="container mx-auto px-6">
-          <div className="flex flex-wrap justify-center gap-3">
+          <div className="flex flex-wrap justify-center gap-3 mb-4">
             {categories.map((category) => (
-              <button
+              <motion.button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
-                className={`
-                    px-6 py-3 rounded-full font-bold text-sm uppercase tracking-wider
-                    transition-all duration-300 hover:scale-105 active:scale-95 shadow-md
-                    ${
-                      selectedCategory === category
-                        ? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-emerald-500/50"
-                        : "bg-white text-slate-700 hover:bg-slate-50"
-                    }
-                  `}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className={`px-6 py-3 rounded-full font-bold text-sm uppercase tracking-wider transition-all duration-300 shadow-md ${
+                  selectedCategory === category
+                    ? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-emerald-500/50"
+                    : "bg-white text-slate-700 hover:bg-slate-50"
+                }`}
               >
-                {category}
-              </button>
+                {category.replace("-", " ")}
+              </motion.button>
             ))}
+          </div>
+
+          {/* Date Filter */}
+          <div className="flex flex-col gap-3">
+            {/* Quick Date Filters */}
+            <div className="flex flex-wrap justify-center items-center gap-2">
+              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                Quick Filter:
+              </span>
+              <button
+                onClick={() => {
+                  const today = new Date().toISOString().split("T")[0];
+                  setStartDate(today);
+                  setEndDate(today);
+                }}
+                className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg text-xs font-bold transition-colors uppercase tracking-wide"
+              >
+                Today
+              </button>
+              <button
+                onClick={() => {
+                  const today = new Date();
+                  const threeDaysAgo = new Date(today);
+                  threeDaysAgo.setDate(today.getDate() - 3);
+                  setStartDate(threeDaysAgo.toISOString().split("T")[0]);
+                  setEndDate(today.toISOString().split("T")[0]);
+                }}
+                className="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-bold transition-colors uppercase tracking-wide"
+              >
+                Last 3 Days
+              </button>
+              <button
+                onClick={() => {
+                  const today = new Date();
+                  const sevenDaysAgo = new Date(today);
+                  sevenDaysAgo.setDate(today.getDate() - 7);
+                  setStartDate(sevenDaysAgo.toISOString().split("T")[0]);
+                  setEndDate(today.toISOString().split("T")[0]);
+                }}
+                className="px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-xs font-bold transition-colors uppercase tracking-wide"
+              >
+                Last 7 Days
+              </button>
+              <button
+                onClick={() => {
+                  const today = new Date();
+                  const oneMonthAgo = new Date(today);
+                  oneMonthAgo.setMonth(today.getMonth() - 1);
+                  setStartDate(oneMonthAgo.toISOString().split("T")[0]);
+                  setEndDate(today.toISOString().split("T")[0]);
+                }}
+                className="px-3 py-1.5 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-lg text-xs font-bold transition-colors uppercase tracking-wide"
+              >
+                Last Month
+              </button>
+            </div>
+
+            {/* Custom Date Range */}
+            <div className="flex flex-wrap justify-center items-center gap-4">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-semibold text-slate-700">
+                  From:
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="px-4 py-2 border-2 border-slate-300 rounded-lg text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  style={{ colorScheme: "light" }}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-semibold text-slate-700">
+                  To:
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="px-4 py-2 border-2 border-slate-300 rounded-lg text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  style={{ colorScheme: "light" }}
+                />
+              </div>
+              {(startDate || endDate) && (
+                <button
+                  onClick={() => {
+                    setStartDate("");
+                    setEndDate("");
+                  }}
+                  className="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg text-sm font-semibold transition-colors"
+                >
+                  Clear Dates
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -259,234 +370,212 @@ const GallaryPage = () => {
       {/* Gallery Grid */}
       <section className="py-16 bg-gradient-to-br from-emerald-50 via-white to-teal-50">
         <div className="container mx-auto px-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredItems.map((item, index) => (
-              <div
-                key={item.id}
-                className="group relative bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 cursor-pointer"
-                style={{
-                  animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both`,
-                }}
-                onClick={() => setSelectedItem(item)}
-              >
-                {/* Image/Video Thumbnail */}
-                <div className="relative h-64 overflow-hidden bg-slate-200">
-                  <Image
-                    src={item.thumbnail}
-                    alt={item.title}
-                    fill
-                    className="object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, idx) => (
+                <div
+                  key={idx}
+                  className="bg-white rounded-2xl overflow-hidden shadow-lg h-96 animate-pulse"
+                />
+              ))}
+            </div>
+          ) : filteredItems.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center py-16"
+            >
+              <ImageIcon className="w-20 h-20 text-slate-300 mx-auto mb-4" />
+              <p className="text-slate-500 text-lg font-bold">
+                No gallery items available.
+              </p>
+            </motion.div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredItems.map((item, index) => {
+                const allImages = [item.image, ...(item.images || [])].filter(
+                  Boolean
+                );
 
-                  {/* Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                return (
+                  <motion.div
+                    key={item._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05, duration: 0.3 }}
+                    className="group relative bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 cursor-pointer"
+                    onClick={() => setSelectedItem(item)}
+                  >
+                    {/* Image Carousel */}
+                    <CardImageCarousel images={allImages} />
 
-                  {/* Video Indicator */}
-                  {item.type === "video" && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shadow-2xl">
-                        <Play
-                          className="w-8 h-8 text-emerald-600 ml-1"
-                          fill="currentColor"
-                        />
+                    {/* Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                    {/* Category Badge */}
+                    <div className="absolute top-4 left-4 z-10">
+                      <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                        <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">
+                          {item.category.replace("-", " ")}
+                        </span>
                       </div>
                     </div>
-                  )}
 
-                  {/* Type Badge */}
-                  <div className="absolute top-4 right-4">
-                    <div className="bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-2">
-                      {item.type === "video" ? (
-                        <Video className="w-4 h-4 text-emerald-600" />
-                      ) : (
-                        <ImageIcon className="w-4 h-4 text-emerald-600" />
+                    {/* Multiple Images Indicator */}
+                    {allImages.length > 1 && (
+                      <div className="absolute top-4 right-4 z-10 bg-orange-500/90 backdrop-blur-sm px-3 py-1.5 rounded-full flex items-center gap-1.5">
+                        <ImageIcon className="w-3 h-3 text-white" />
+                        <span className="text-xs font-bold text-white">
+                          {allImages.length}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Content */}
+                    <div className="relative p-5 bg-white">
+                      <h3 className="text-lg font-black text-slate-900 mb-2 line-clamp-1 uppercase tracking-wider">
+                        {item.title}
+                      </h3>
+
+                      {item.description && (
+                        <p className="text-sm text-slate-600 mb-3 line-clamp-2 font-medium">
+                          {item.description}
+                        </p>
                       )}
-                      <span className="text-xs font-bold text-slate-700 uppercase">
-                        {item.type}
-                      </span>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                          <Calendar className="w-4 h-4" />
+                          {new Date(item.date).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </div>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleLike(item._id);
+                          }}
+                          className={`p-2 rounded-full transition-all ${
+                            likedItems.has(item._id)
+                              ? "bg-red-100 text-red-500"
+                              : "bg-slate-100 text-slate-400 hover:bg-red-100 hover:text-red-500"
+                          }`}
+                        >
+                          <Heart
+                            className="w-4 h-4"
+                            fill={
+                              likedItems.has(item._id) ? "currentColor" : "none"
+                            }
+                          />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </div>
-
-                {/* Card Content */}
-                <div className="p-5">
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <h3 className="font-bold text-slate-800 line-clamp-2 group-hover:text-emerald-600 transition-colors">
-                      {item.title}
-                    </h3>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2 text-slate-500">
-                      <Calendar className="w-4 h-4" />
-                      <span className="font-medium">{item.date}</span>
-                    </div>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleLike(item.id);
-                      }}
-                      className="flex items-center gap-1 hover:scale-110 transition-transform"
-                    >
-                      <Heart
-                        className={`w-5 h-5 transition-colors ${
-                          likedItems.has(item.id)
-                            ? "fill-red-500 text-red-500"
-                            : "text-slate-400"
-                        }`}
-                      />
-                      <span className="font-bold text-slate-600">
-                        {item.likes + (likedItems.has(item.id) ? 1 : 0)}
-                      </span>
-                    </button>
-                  </div>
-
-                  <div className="mt-3">
-                    <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">
-                      {item.category}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Lightbox Modal */}
-      {selectedItem && (
-        <div
-          className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4 animate-fadeIn"
-          onClick={() => setSelectedItem(null)}
-        >
-          <button
+      {/* Modal */}
+      <AnimatePresence>
+        {selectedItem && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"
             onClick={() => setSelectedItem(null)}
-            className="absolute top-6 right-6 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
           >
-            <X className="w-6 h-6 text-white" />
-          </button>
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="relative max-w-6xl w-full bg-white rounded-2xl overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setSelectedItem(null)}
+                className="absolute top-4 right-4 z-50 p-3 bg-white/90 hover:bg-white rounded-full shadow-lg transition-all hover:scale-110"
+              >
+                <X className="w-6 h-6 text-slate-900" />
+              </button>
 
-          <div
-            className="max-w-6xl w-full bg-slate-900 rounded-3xl overflow-hidden shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Media Content */}
-            <div className="relative bg-black">
-              {selectedItem.type === "video" ? (
-                <div className="aspect-video">
-                  <iframe
-                    src={selectedItem.src}
-                    className="w-full h-full"
-                    allowFullScreen
-                    title={selectedItem.title}
-                  />
-                </div>
-              ) : (
-                <div className="relative aspect-video">
-                  <Image
-                    src={selectedItem.src}
-                    alt={selectedItem.title}
-                    fill
-                    className="object-contain"
-                  />
-                </div>
-              )}
-            </div>
+              {/* Image Carousel */}
+              <ModalImageCarousel
+                images={[
+                  selectedItem.image,
+                  ...(selectedItem.images || []),
+                ].filter(Boolean)}
+              />
 
-            {/* Details */}
-            <div className="p-8 text-white">
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div>
-                  <h2 className="text-3xl font-black mb-2">
-                    {selectedItem.title}
-                  </h2>
-                  <div className="flex items-center gap-4 text-slate-300">
-                    <span className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      {selectedItem.date}
-                    </span>
-                    <span className="inline-block px-3 py-1 bg-emerald-600 text-white rounded-full text-xs font-bold">
-                      {selectedItem.category}
-                    </span>
+              {/* Content */}
+              <div className="p-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="px-4 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold uppercase tracking-wider">
+                    {selectedItem.category.replace("-", " ")}
+                  </span>
+                  <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
+                    <Calendar className="w-4 h-4" />
+                    {new Date(selectedItem.date).toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
                   </div>
                 </div>
 
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleLike(selectedItem.id);
-                  }}
-                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full transition-all hover:scale-110"
-                >
-                  <Heart
-                    className={`w-5 h-5 ${
-                      likedItems.has(selectedItem.id)
-                        ? "fill-red-500 text-red-500"
-                        : "text-white"
-                    }`}
-                  />
-                  <span className="font-bold">
-                    {selectedItem.likes +
-                      (likedItems.has(selectedItem.id) ? 1 : 0)}
-                  </span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+                <h2 className="text-3xl font-black text-slate-900 mb-4 uppercase tracking-wider">
+                  {selectedItem.title}
+                </h2>
 
-      {/* CTA Section */}
-      <section className="bg-gradient-to-r from-emerald-600 to-emerald-800 py-20">
-        <div className="container mx-auto px-6 text-center">
-          <h2 className="text-4xl font-black text-white mb-6">
-            Be Part of Our Story
-          </h2>
-          <p className="text-xl text-emerald-100 mb-8 max-w-2xl mx-auto">
-            Join us in creating more moments that matter. Volunteer, donate, or
-            simply spread the word.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <a
-              href="/contact"
-              className="inline-block bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-full font-bold text-sm uppercase tracking-wider transition-all hover:scale-105 shadow-2xl active:scale-95"
-            >
-              Get Involved
-            </a>
-            <Link
-              href="/"
-              className="inline-block bg-white hover:bg-slate-50 text-emerald-700 px-8 py-4 rounded-full font-bold text-sm uppercase tracking-wider transition-all hover:scale-105 shadow-2xl active:scale-95"
-            >
-              Learn More
-            </Link>
-          </div>
-        </div>
-      </section>
+                {selectedItem.description && (
+                  <p className="text-slate-600 leading-relaxed font-medium text-lg">
+                    {selectedItem.description}
+                  </p>
+                )}
+
+                <div className="mt-6 flex items-center justify-between">
+                  <button
+                    onClick={() => handleLike(selectedItem._id)}
+                    className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold transition-all ${
+                      likedItems.has(selectedItem._id)
+                        ? "bg-red-500 text-white hover:bg-red-600"
+                        : "bg-slate-100 text-slate-700 hover:bg-red-100 hover:text-red-500"
+                    }`}
+                  >
+                    <Heart
+                      className="w-5 h-5"
+                      fill={
+                        likedItems.has(selectedItem._id)
+                          ? "currentColor"
+                          : "none"
+                      }
+                    />
+                    {likedItems.has(selectedItem._id) ? "Liked" : "Like"}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <style jsx>{`
         @keyframes fadeInUp {
           from {
             opacity: 0;
-            transform: translateY(30px);
+            transform: translateY(20px);
           }
           to {
             opacity: 1;
             transform: translateY(0);
           }
-        }
-
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out;
         }
       `}</style>
     </DefaultLayouts>

@@ -1,7 +1,8 @@
 "use client";
 import DefaultLayouts from "@/features/layouts/DefaultLayouts";
+import PageLoader from "@/features/components/PageLoader";
 import dynamic from "next/dynamic";
-import { Suspense } from "react";
+import { Suspense, useState, useEffect } from "react";
 
 // Dynamically import components for code splitting and optimization
 const HeroSection = dynamic(() => import("@/features/components/HeroSection"), {
@@ -52,7 +53,23 @@ const Certifications = dynamic(
     loading: () => <div className="h-96 bg-emerald-900 animate-pulse" />,
   }
 );
+
 export default function HomePage() {
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Show loader for minimum 1.5 seconds for smooth experience
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading) {
+    return <PageLoader />;
+  }
+
   return (
     <DefaultLayouts>
       <Suspense

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DefaultLayouts from "../layouts/DefaultLayouts";
 import BackgroundSlider from "../components/BackgroundSlider";
 import {
@@ -12,7 +12,15 @@ import {
   CheckCircle,
 } from "lucide-react";
 
+interface SiteSettings {
+  email: string;
+  phone: string;
+  address: string;
+}
+
 const ContactPage = () => {
+  const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -23,6 +31,24 @@ const ContactPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch("/api/settings");
+      if (response.ok) {
+        const data = await response.json();
+        setSettings(data.settings);
+      }
+    } catch (error) {
+      console.error("Failed to fetch settings:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const backgroundImages = [
     "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=1920&q=80",
     "https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=1920&q=80",
@@ -32,13 +58,35 @@ const ContactPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsSubmitting(false);
-    setIsSubmitted(true);
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
-    }, 3000);
+
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        setIsSubmitted(true);
+        setTimeout(() => {
+          setIsSubmitted(false);
+          setFormData({
+            name: "",
+            email: "",
+            phone: "",
+            subject: "",
+            message: "",
+          });
+        }, 3000);
+      } else {
+        alert("Failed to send message. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error submitting contact form:", error);
+      alert("An error occurred. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (
@@ -76,54 +124,70 @@ const ContactPage = () => {
       </section>
 
       {/* Contact Info Cards */}
-      <section className="py-16 bg-gradient-to-br from-emerald-50 via-white to-teal-50">
+      <section className="py-16 bg-linear-to-br from-emerald-50 via-white to-teal-50">
         <div className="container mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:-translate-y-2 group border border-emerald-100">
-              <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
-                <Phone className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-xl font-black text-slate-800 mb-3">
-                Call Us
-              </h3>
-              <p className="text-slate-600 mb-2">Mon-Sat: 9AM - 6PM</p>
-              <a
-                href="tel:+919876543210"
-                className="text-emerald-600 font-bold hover:text-emerald-700 transition-colors"
-              >
-                +91 98765 43210
-              </a>
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-2xl p-8 shadow-2xl animate-pulse"
+                >
+                  <div className="w-16 h-16 bg-slate-200 rounded-2xl mb-6" />
+                  <div className="h-6 bg-slate-200 rounded mb-3 w-24" />
+                  <div className="h-4 bg-slate-200 rounded mb-2 w-32" />
+                  <div className="h-4 bg-slate-200 rounded w-36" />
+                </div>
+              ))}
             </div>
+          ) : settings ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+              <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:-translate-y-2 group border border-emerald-100">
+                <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
+                  <Phone className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-xl font-black text-slate-800 mb-3">
+                  Call Us
+                </h3>
+                <p className="text-slate-600 mb-2">Mon-Sat: 9AM - 6PM</p>
+                <a
+                  href={`tel:${settings.phone}`}
+                  className="text-emerald-600 font-bold hover:text-emerald-700 transition-colors"
+                >
+                  {settings.phone}
+                </a>
+              </div>
 
-            <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:-translate-y-2 group border border-emerald-100">
-              <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
-                <Mail className="w-8 h-8 text-white" />
+              <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:-translate-y-2 group border border-emerald-100">
+                <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
+                  <Mail className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-xl font-black text-slate-800 mb-3">
+                  Email Us
+                </h3>
+                <p className="text-slate-600 mb-2">We reply within 24 hours</p>
+                <a
+                  href={`mailto:${settings.email}`}
+                  className="text-emerald-600 font-bold hover:text-emerald-700 transition-colors break-all"
+                >
+                  {settings.email}
+                </a>
               </div>
-              <h3 className="text-xl font-black text-slate-800 mb-3">
-                Email Us
-              </h3>
-              <p className="text-slate-600 mb-2">We reply within 24 hours</p>
-              <a
-                href="mailto:info@samriddhiseva.org"
-                className="text-emerald-600 font-bold hover:text-emerald-700 transition-colors break-all"
-              >
-                info@samriddhiseva.org
-              </a>
-            </div>
 
-            <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:-translate-y-2 group border border-emerald-100">
-              <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
-                <MapPin className="w-8 h-8 text-white" />
+              <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:-translate-y-2 group border border-emerald-100">
+                <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
+                  <MapPin className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-xl font-black text-slate-800 mb-3">
+                  Visit Us
+                </h3>
+                <p className="text-slate-600 mb-2">Our main office</p>
+                <address className="text-emerald-600 font-bold not-italic">
+                  {settings.address}
+                </address>
               </div>
-              <h3 className="text-xl font-black text-slate-800 mb-3">
-                Visit Us
-              </h3>
-              <p className="text-slate-600 mb-2">Our main office</p>
-              <address className="text-emerald-600 font-bold not-italic">
-                123 Seva Street, Mumbai
-              </address>
             </div>
-          </div>
+          ) : null}
         </div>
       </section>
 
