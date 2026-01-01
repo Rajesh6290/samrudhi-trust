@@ -97,7 +97,8 @@ const LoginPage: React.FC = () => {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="w-20 h-20 bg-white rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-xl"
+              className="w-20 h-20 cursor-pointer bg-white rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-xl"
+              onClick={() => (window.location.href = "/")}
             >
               <Image src="/logo.svg" width={50} height={50} alt="Logo" />
             </motion.div>

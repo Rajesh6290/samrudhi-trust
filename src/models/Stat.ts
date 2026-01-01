@@ -6,6 +6,10 @@ const StatSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    ref: {
+      type: String,
+      required: true,
+    },
     value: {
       type: Number,
       required: true,

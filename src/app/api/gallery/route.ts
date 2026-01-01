@@ -6,34 +6,6 @@ import Stat from "@/models/Stat";
 import { parse } from "cookie";
 import { NextRequest, NextResponse } from "next/server";
 
-// Helper function to update stats when gallery changes
-async function updateStatsOnGalleryChange(
-  category: string,
-  action: "add" | "remove"
-) {
-  try {
-    // Map categories to stat titles
-    const categoryStatMap: Record<string, string> = {
-      "food-rescue": "Meals Served",
-      "blood-donation": "Blood Donations",
-      "child-welfare": "Children Helped",
-      events: "Events Hosted",
-    };
-
-    const statTitle = categoryStatMap[category];
-    if (!statTitle) return;
-
-    const stat = await Stat.findOne({ title: statTitle });
-    if (stat) {
-      stat.value =
-        action === "add" ? stat.value + 1 : Math.max(0, stat.value - 1);
-      await stat.save();
-    }
-  } catch (error) {
-    console.error("Failed to update stats:", error);
-  }
-}
-
 // GET all gallery items
 export async function GET(request: NextRequest) {
   try {
@@ -152,9 +124,11 @@ export async function POST(request: NextRequest) {
       category,
       date: date || new Date(),
     });
-
-    // Auto-update stats based on category
-    await updateStatsOnGalleryChange(category, "add");
+    await Stat.updateOne(
+      { ref: category },
+      { $inc: { value: 1 } },
+      { upsert: true }
+    );
 
     return NextResponse.json(
       {

@@ -89,18 +89,18 @@ const WhatWeDo = () => {
             <p className="text-xl">No services available at the moment.</p>
           </div>
         ) : (
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-5">
             {services.map((service) => (
               <motion.div
                 key={service._id}
                 {...FADE_UP}
                 whileHover={{ y: -10 }}
-                className="bg-white p-12 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 group"
+                className="bg-white p-8 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 group"
               >
                 <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-500">
                   {iconMap[service.icon] || <Utensils size={32} />}
                 </div>
-                <h3 className="text-2xl font-black text-slate-800 mb-4">
+                <h3 className="text-xl font-black text-slate-800 mb-4">
                   {service.title}
                 </h3>
                 <p className="text-slate-500 leading-relaxed font-medium">

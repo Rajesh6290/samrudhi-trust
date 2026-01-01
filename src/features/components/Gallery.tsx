@@ -1,15 +1,31 @@
 "use client";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronLeft, ChevronRight, ZoomIn, Grid } from "lucide-react";
-import { useState, useEffect } from "react";
+import {
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ZoomIn,
+  Grid,
+  Play,
+  Pause,
+} from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+
+interface GalleryFile {
+  id: string;
+  url: string;
+  type: string;
+}
 
 interface GalleryImage {
   _id: string;
-  image: string;
-  category: string;
   title: string;
+  description?: string;
+  files: GalleryFile[];
+  category: string;
   createdAt: string;
+  date: string;
 }
 
 const categoryMap: Record<string, string> = {
@@ -18,6 +34,149 @@ const categoryMap: Record<string, string> = {
   "child-welfare": "Child Welfare",
   events: "Events",
   other: "Other",
+};
+
+// Auto-generate title based on category
+const generateTitle = (category: string, date: string): string => {
+  const categoryTitles: Record<string, string> = {
+    "food-rescue": "Community Food Distribution Drive",
+    "blood-donation": "Blood Donation Camp",
+    "child-welfare": "Child Welfare Program",
+    events: "Community Event",
+    other: "Community Initiative",
+  };
+
+  const month = new Date(date).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+  return `${categoryTitles[category] || "Community Activity"} - ${month}`;
+};
+
+// Auto-generate description based on category
+const generateDescription = (category: string): string => {
+  const categoryDescriptions: Record<string, string> = {
+    "food-rescue":
+      "Making a difference by providing nutritious meals to those in need",
+    "blood-donation":
+      "Saving lives through voluntary blood donation initiatives",
+    "child-welfare":
+      "Empowering children with education, care, and opportunities",
+    events: "Bringing communities together for positive change",
+    other: "Working together to create lasting impact",
+  };
+
+  return (
+    categoryDescriptions[category] ||
+    "Making a positive impact in the community"
+  );
+};
+
+// Lightbox Carousel Component for viewing multiple files in modal
+const LightboxCarousel = ({ item }: { item: GalleryImage }) => {
+  const [currentFileIndex, setCurrentFileIndex] = useState(0);
+  const files = item.files || [];
+  const currentFile = files[currentFileIndex];
+
+  const handleNextFile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (files.length > 1) {
+      setCurrentFileIndex((prev) => (prev + 1) % files.length);
+    }
+  };
+
+  const handlePrevFile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (files.length > 1) {
+      setCurrentFileIndex((prev) => (prev - 1 + files.length) % files.length);
+    }
+  };
+
+  const getFileType = (file: GalleryFile) => {
+    const url = file.url.toLowerCase();
+    if (file.type === "video" || url.match(/\.(mp4|webm|mov|avi)$/))
+      return "video";
+    if (file.type === "pdf" || url.match(/\.pdf$/)) return "pdf";
+    return "image";
+  };
+
+  const fileType = currentFile ? getFileType(currentFile) : "image";
+
+  return (
+    <>
+      <div className="relative w-full h-[60vh] md:h-[75vh] rounded-2xl overflow-hidden bg-black/50 shadow-2xl border border-white/10">
+        {currentFile && fileType === "video" ? (
+          <video
+            src={currentFile.url}
+            className="w-full h-full object-contain"
+            controls
+            autoPlay
+            playsInline
+          />
+        ) : currentFile && fileType === "pdf" ? (
+          <div className="w-full h-full bg-white">
+            <iframe
+              src={`${currentFile.url}#toolbar=1&navpanes=1&scrollbar=1`}
+              className="w-full h-full border-0"
+              title="PDF Viewer"
+              allowFullScreen
+            />
+          </div>
+        ) : (
+          currentFile && (
+            <Image
+              src={currentFile.url}
+              alt={item.title || "Gallery image"}
+              fill
+              className="object-contain"
+              priority
+            />
+          )
+        )}
+
+        {/* File Navigation - Show only if multiple files */}
+        {files.length > 1 && (
+          <>
+            <button
+              onClick={handlePrevFile}
+              className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 backdrop-blur-md p-3 rounded-full transition-all z-10"
+            >
+              <ChevronLeft className="text-white w-6 h-6" />
+            </button>
+            <button
+              onClick={handleNextFile}
+              className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 backdrop-blur-md p-3 rounded-full transition-all z-10"
+            >
+              <ChevronRight className="text-white w-6 h-6" />
+            </button>
+
+            {/* File Counter */}
+            <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm font-mono">
+              {currentFileIndex + 1} / {files.length}
+            </div>
+
+            {/* Dots Indicator */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+              {files.map((file, idx) => (
+                <button
+                  key={file.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentFileIndex(idx);
+                  }}
+                  className={`transition-all ${
+                    idx === currentFileIndex
+                      ? "bg-orange-500 w-8 h-2"
+                      : "bg-white/50 hover:bg-white/70 w-2 h-2"
+                  } rounded-full`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </>
+  );
 };
 
 const Gallery: React.FC = () => {
@@ -36,7 +195,28 @@ const Gallery: React.FC = () => {
       const response = await fetch("/api/gallery");
       if (response.ok) {
         const data = await response.json();
-        setGalleryImages(data.items || []);
+        // Process items to ensure they have files array
+        const processedItems = (data.items || []).map((item: any) => {
+          // Handle backward compatibility with single image field
+          if (!item.files && item.image) {
+            return {
+              ...item,
+              files: [
+                {
+                  id: item._id,
+                  url: item.image,
+                  type:
+                    item.image.includes("video") ||
+                    item.image.match(/\.(mp4|webm|mov)$/i)
+                      ? "video"
+                      : "image",
+                },
+              ],
+            };
+          }
+          return item;
+        });
+        setGalleryImages(processedItems);
       }
     } catch (error) {
       console.error("Failed to fetch gallery:", error);
@@ -58,7 +238,9 @@ const Gallery: React.FC = () => {
     "All",
     ...Array.from(
       new Set(
-        galleryImages?.map((img) => categoryMap[img.category] || img.category)
+        galleryImages
+          ?.map((img) => categoryMap[img.category] || img.category)
+          .filter((cat) => cat.toLowerCase() !== "all")
       )
     ),
   ];
@@ -118,6 +300,200 @@ const Gallery: React.FC = () => {
       </div>
     </div>
   );
+
+  // Card Carousel Component for multiple files
+  const CardCarousel = ({
+    item,
+    index,
+  }: {
+    item: GalleryImage;
+    index: number;
+  }) => {
+    const [currentFileIndex, setCurrentFileIndex] = useState(0);
+    const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const files = item.files || [];
+    const currentFile = files[currentFileIndex];
+
+    const title =
+      item.title || generateTitle(item.category, item.date || item.createdAt);
+    const description = item.description || generateDescription(item.category);
+
+    const handleNext = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (files.length > 1) {
+        setCurrentFileIndex((prev) => (prev + 1) % files.length);
+        setIsVideoPlaying(false);
+      }
+    };
+
+    const handlePrev = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (files.length > 1) {
+        setCurrentFileIndex((prev) => (prev - 1 + files.length) % files.length);
+        setIsVideoPlaying(false);
+      }
+    };
+
+    const handleVideoClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (videoRef.current) {
+        if (isVideoPlaying) {
+          videoRef.current.pause();
+        } else {
+          videoRef.current.play();
+        }
+        setIsVideoPlaying(!isVideoPlaying);
+      }
+    };
+
+    const getFileType = (file: GalleryFile) => {
+      const url = file.url.toLowerCase();
+      if (file.type === "video" || url.match(/\.(mp4|webm|mov|avi)$/))
+        return "video";
+      if (file.type === "pdf" || url.match(/\.pdf$/)) return "pdf";
+      return "image";
+    };
+
+    const fileType = currentFile ? getFileType(currentFile) : "image";
+
+    return (
+      <motion.div
+        layout
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+        transition={{ duration: 0.4, delay: index * 0.05 }}
+        onClick={() => setSelectedImage(item._id)}
+        className="group relative aspect-4/3 rounded-3xl overflow-hidden cursor-pointer bg-slate-200 shadow-md hover:shadow-2xl hover:-translate-y-1 transition-all duration-500"
+      >
+        {/* File Display - Video, Image or PDF */}
+        {currentFile && fileType === "video" ? (
+          <div className="relative w-full h-full">
+            <video
+              ref={videoRef}
+              src={currentFile.url}
+              className="w-full h-full object-cover"
+              muted
+              loop
+              playsInline
+              onPlay={() => setIsVideoPlaying(true)}
+              onPause={() => setIsVideoPlaying(false)}
+            />
+            {/* Play/Pause Overlay */}
+            <div
+              onClick={handleVideoClick}
+              className={`absolute inset-0 flex items-center justify-center bg-black/30 transition-opacity ${
+                isVideoPlaying ? "opacity-0 hover:opacity-100" : "opacity-100"
+              }`}
+            >
+              <div className="bg-orange-500/90 hover:bg-orange-400 p-4 rounded-full transition-all">
+                {isVideoPlaying ? (
+                  <Pause size={24} className="text-white" />
+                ) : (
+                  <Play size={24} className="text-white ml-1" fill="white" />
+                )}
+              </div>
+            </div>
+          </div>
+        ) : currentFile && fileType === "pdf" ? (
+          <div className="w-full h-full bg-linear-to-br from-red-50 to-orange-50 flex items-center justify-center">
+            <div className="text-center">
+              <div className="bg-red-500 text-white rounded-2xl p-6 inline-block mb-4">
+                <svg
+                  className="w-16 h-16"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18.5,9H13V3.5L18.5,9M6,20V4H12V10H18V20H6Z" />
+                </svg>
+              </div>
+              <p className="text-slate-700 font-bold text-lg">PDF Document</p>
+              <p className="text-slate-500 text-sm mt-1">Click to view</p>
+            </div>
+          </div>
+        ) : (
+          currentFile && (
+            <Image
+              src={currentFile.url}
+              alt={title}
+              fill
+              className="object-cover transition-transform duration-700 group-hover:scale-110"
+            />
+          )
+        )}
+
+        {/* File Type Indicator */}
+        {currentFile && fileType === "video" && !isVideoPlaying && (
+          <div className="absolute top-4 left-4 bg-orange-500/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 z-10">
+            <Play size={12} fill="white" />
+            VIDEO
+          </div>
+        )}
+        {currentFile && fileType === "pdf" && (
+          <div className="absolute top-4 left-4 bg-red-500/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5">
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2Z" />
+            </svg>
+            PDF
+          </div>
+        )}
+
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-linear-to-t from-slate-900/90 via-slate-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+        {/* Content Overlay */}
+        <div className="absolute bottom-0 left-0 right-0 p-6 translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+          <span className="text-orange-400 text-xs font-bold uppercase tracking-wider block mb-1">
+            {categoryMap[item.category] || item.category}
+          </span>
+          <h3 className="text-white text-lg font-bold leading-tight line-clamp-2">
+            {title}
+          </h3>
+          <p className="text-slate-300 text-sm mt-1 line-clamp-1">
+            {description}
+          </p>
+        </div>
+
+        {/* Carousel Navigation - Show only if multiple files */}
+        {files.length > 1 && (
+          <>
+            <button
+              onClick={handlePrev}
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 backdrop-blur-md p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all z-10"
+            >
+              <ChevronLeft className="text-white w-5 h-5" />
+            </button>
+            <button
+              onClick={handleNext}
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 backdrop-blur-md p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all z-10"
+            >
+              <ChevronRight className="text-white w-5 h-5" />
+            </button>
+
+            {/* Dots Indicator */}
+            <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              {files.map((_, idx) => (
+                <div
+                  key={idx}
+                  className={`w-1.5 h-1.5 rounded-full transition-all ${
+                    idx === currentFileIndex
+                      ? "bg-orange-500 w-4"
+                      : "bg-white/50"
+                  }`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Zoom Icon Button */}
+        <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md p-2.5 rounded-full opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+          <ZoomIn className="text-white w-5 h-5" />
+        </div>
+      </motion.div>
+    );
+  };
 
   return (
     <section id="gallery" className="py-24 md:py-32 bg-slate-50 relative z-0">
@@ -213,41 +589,7 @@ const Gallery: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             <AnimatePresence mode="popLayout">
               {displayedImages.map((image, index) => (
-                <motion.div
-                  key={image._id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.4, delay: index * 0.05 }}
-                  onClick={() => setSelectedImage(image._id)}
-                  className="group relative aspect-4/3 rounded-3xl overflow-hidden cursor-pointer bg-slate-200 shadow-md hover:shadow-2xl hover:-translate-y-1 transition-all duration-500"
-                >
-                  <Image
-                    src={image.image}
-                    alt={image.title}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-110"
-                  />
-
-                  {/* Gradient Overlay */}
-                  <div className="absolute inset-0 bg-linear-to-t from-slate-900/90 via-slate-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-                  {/* Content Overlay */}
-                  <div className="absolute bottom-0 left-0 right-0 p-6 translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                    <span className="text-orange-400 text-xs font-bold uppercase tracking-wider block mb-1">
-                      {categoryMap[image.category] || image.category}
-                    </span>
-                    <h3 className="text-white text-lg font-bold leading-tight">
-                      {image.title}
-                    </h3>
-                  </div>
-
-                  {/* Zoom Icon Button */}
-                  <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md p-2.5 rounded-full opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-                    <ZoomIn className="text-white w-5 h-5" />
-                  </div>
-                </motion.div>
+                <CardCarousel key={image._id} item={image} index={index} />
               ))}
             </AnimatePresence>
           </div>
@@ -273,8 +615,7 @@ const Gallery: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            // FIX: Added high Z-index to ensure it sits above navbar
-            className=" fixed inset-0 z-100 bg-slate-950/95 backdrop-blur-sm flex items-center mt-16 justify-center p-4 md:p-8"
+            className="fixed inset-0 z-100 bg-slate-950/95 backdrop-blur-sm flex items-center mt-16 justify-center p-4 md:p-8"
             onClick={() => setSelectedImage(null)}
           >
             {/* Modal Content Container */}
@@ -286,7 +627,6 @@ const Gallery: React.FC = () => {
               onClick={(e) => e.stopPropagation()}
               className="relative w-full max-w-6xl flex flex-col items-center justify-center"
             >
-              {/* FIX: Close Button moved INSIDE safe area and styled better */}
               <button
                 onClick={() => setSelectedImage(null)}
                 className="absolute -top-12 right-0 md:top-4 md:right-4 z-50 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors backdrop-blur-md group"
@@ -297,16 +637,8 @@ const Gallery: React.FC = () => {
                 />
               </button>
 
-              {/* FIX: Image Container - switched to viewport height based sizing (vh) */}
-              <div className="relative w-full h-[60vh] md:h-[75vh] rounded-2xl overflow-hidden bg-black/50 shadow-2xl border border-white/10">
-                <Image
-                  src={selectedImageData.image}
-                  alt={selectedImageData.title}
-                  fill
-                  className="object-contain"
-                  priority
-                />
-              </div>
+              {/* File Container - Handle multiple files with carousel */}
+              <LightboxCarousel item={selectedImageData} />
 
               {/* Bottom Info Bar */}
               <div className="mt-6 w-full flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-white">
@@ -316,9 +648,17 @@ const Gallery: React.FC = () => {
                       selectedImageData.category}
                   </span>
                   <h3 className="text-2xl md:text-3xl font-bold mt-1">
-                    {selectedImageData.title}
+                    {selectedImageData.title ||
+                      generateTitle(
+                        selectedImageData.category,
+                        selectedImageData.date || selectedImageData.createdAt
+                      )}
                   </h3>
-                  <p className="text-slate-400 text-sm mt-1">
+                  <p className="text-slate-400 text-sm mt-2">
+                    {selectedImageData.description ||
+                      generateDescription(selectedImageData.category)}
+                  </p>
+                  <p className="text-slate-500 text-sm mt-1">
                     {formatDate(selectedImageData.createdAt)}
                   </p>
                 </div>
@@ -333,7 +673,7 @@ const Gallery: React.FC = () => {
                 </div>
               </div>
 
-              {/* Navigation Buttons (Floating) */}
+              {/* Navigation Buttons (Floating) - Navigate between gallery items */}
               <div className="pointer-events-none absolute inset-0 flex items-center justify-between px-2 md:px-0">
                 <button
                   onClick={handlePrevious}

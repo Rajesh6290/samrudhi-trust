@@ -1,37 +1,8 @@
 import { verifyToken } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import Gallery from "@/models/Gallery";
-import Stat from "@/models/Stat";
 import { parse } from "cookie";
 import { NextRequest, NextResponse } from "next/server";
-
-// Helper function to update stats when gallery changes
-async function updateStatsOnGalleryChange(
-  category: string,
-  action: "add" | "remove"
-) {
-  try {
-    // Map categories to stat titles
-    const categoryStatMap: Record<string, string> = {
-      "food-rescue": "Meals Served",
-      "blood-donation": "Blood Donations",
-      "child-welfare": "Children Helped",
-      events: "Events Hosted",
-    };
-
-    const statTitle = categoryStatMap[category];
-    if (!statTitle) return;
-
-    const stat = await Stat.findOne({ title: statTitle });
-    if (stat) {
-      stat.value =
-        action === "add" ? stat.value + 1 : Math.max(0, stat.value - 1);
-      await stat.save();
-    }
-  } catch (error) {
-    console.error("Failed to update stats:", error);
-  }
-}
 
 // PUT - Update gallery item
 export async function PUT(
@@ -112,14 +83,7 @@ export async function DELETE(
         { status: 404 }
       );
     }
-
-    // Store category before deletion for stats update
-    const category = item.category;
-
     await Gallery.findByIdAndDelete(id);
-
-    // Auto-update stats based on category
-    await updateStatsOnGalleryChange(category, "remove");
 
     return NextResponse.json(
       {

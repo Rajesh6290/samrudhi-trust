@@ -1,20 +1,18 @@
 "use client";
 
-import AdminLayout from "@/features/layouts/AdminLayout";
-import { motion, AnimatePresence } from "framer-motion";
+import useSwr from "@/features/hooks/useSwr";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Download,
   Edit,
-  Image as ImageIcon,
+  FileText,
   Plus,
   Trash2,
   Upload,
   X,
-  FileText,
-  PlayCircle,
-  ChevronLeft,
-  ChevronRight,
-  Download,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
@@ -22,7 +20,6 @@ interface GalleryFile {
   id: string;
   url: string;
   type: string;
-  _id?: string;
 }
 
 interface GalleryItem {
@@ -35,51 +32,366 @@ interface GalleryItem {
   isActive: boolean;
 }
 
+// Category configurations with auto-generated content
+const categories = [
+  {
+    id: "ACT001",
+    label: "Food Distribution for Poor and Needy People",
+    titles: [
+      "Hunger Relief",
+      "Nutritious Meals",
+      "Food for All",
+      "Zero Hunger Mission",
+      "Daily Meal Support",
+      "Care Through Food",
+      "Community Feeding",
+      "Serving with Dignity",
+      "Hope Through Meals",
+      "Support the Needy",
+    ],
+    descriptions: [
+      "Providing freshly prepared and nutritious meals to poor and needy individuals.",
+      "Ensuring that no person sleeps hungry due to poverty or hardship.",
+      "Regular food distribution drives are conducted in slums and public areas.",
+      "Meals are prepared hygienically with balanced nutrition.",
+      "Special focus is given to children, elderly, and daily wage workers.",
+      "Volunteers serve food with respect and compassion.",
+      "This initiative directly fights hunger and malnutrition.",
+      "Food support brings dignity and hope to vulnerable people.",
+      "We aim to reduce food insecurity at the grassroots level.",
+      "Every meal served reflects humanity and care.",
+    ],
+  },
+  {
+    id: "ACT002",
+    label: "Food Service in Hospitals",
+    titles: [
+      "Hospital Meal Support",
+      "Care Beyond Treatment",
+      "Food for Patients",
+      "Support for Attendants",
+      "Healing with Care",
+      "Hospital Outreach",
+      "Nutrition Assistance",
+      "Serving During Illness",
+      "Humanity in Hospitals",
+      "Meals with Compassion",
+    ],
+    descriptions: [
+      "Serving food to patients and their attendants in hospitals.",
+      "Supporting families who cannot afford regular meals during long treatments.",
+      "Reducing stress for attendants staying day and night with patients.",
+      "Food is served hygienically and on time.",
+      "Special focus on government and critical care hospitals.",
+      "Nutrition support helps patients recover better.",
+      "Volunteers coordinate with hospital staff for smooth service.",
+      "This service provides emotional comfort during illness.",
+      "No one should go hungry during medical treatment.",
+      "Care extends beyond medicine through this initiative.",
+    ],
+  },
+  {
+    id: "ACT003",
+    label: "Food Distribution in Orphanages",
+    titles: [
+      "Care for Orphans",
+      "Healthy Childhood",
+      "Meals for Children",
+      "Nutrition for Growth",
+      "Support with Love",
+      "Food for Smiles",
+      "Child Welfare",
+      "Serving Young Lives",
+      "Building Healthy Futures",
+      "Care with Compassion",
+    ],
+    descriptions: [
+      "Supplying nutritious meals to children living in orphanages.",
+      "Supporting proper growth, health, and development of children.",
+      "Meals are planned according to children’s nutritional needs.",
+      "Coordination with orphanage management ensures regular support.",
+      "Children are served with care, love, and dignity.",
+      "Special meals are arranged during festivals and events.",
+      "This initiative promotes child welfare and well-being.",
+      "Food distribution brings joy and happiness to children.",
+      "Healthy food helps build strong futures.",
+      "Every child deserves nutrition and care.",
+    ],
+  },
+  {
+    id: "ACT004",
+    label:
+      "Emergency Food Support During Natural Disasters and Critical Situations",
+    titles: [
+      "Emergency Food Relief",
+      "Disaster Time Support",
+      "Crisis Food Aid",
+      "Rapid Emergency Response",
+      "Relief During Calamities",
+      "Immediate Hunger Relief",
+      "Support in Critical Situations",
+      "Standing with Victims",
+      "Hope During Disasters",
+      "Humanitarian Emergency Care",
+    ],
+    descriptions: [
+      "Delivering immediate food relief during natural disasters and emergencies.",
+      "Supporting communities affected by floods, cyclones, fires, and pandemics.",
+      "Ensuring food access when normal supply chains are disrupted.",
+      "Rapid response helps prevent hunger during crisis situations.",
+      "Special priority is given to children and elderly people.",
+      "Food packets are distributed in a safe and organized manner.",
+      "Coordination with local authorities ensures effective relief.",
+      "Our team works on the ground in affected areas.",
+      "Emergency food support reduces suffering and stress.",
+      "This initiative stands for humanity in difficult times.",
+    ],
+  },
+  {
+    id: "ACT005",
+    label: "Blood Donation During Emergencies",
+    titles: [
+      "Life Saving Support",
+      "Emergency Blood Help",
+      "Donate for Life",
+      "Urgent Blood Aid",
+      "Saving Lives Together",
+      "Medical Emergency Support",
+      "Hope Through Donation",
+      "Blood When Needed",
+      "Stand for Life",
+      "Critical Care Assistance",
+    ],
+    descriptions: [
+      "Organizing blood donation support during medical emergencies.",
+      "Helping patients in accidents, surgeries, and critical conditions.",
+      "Coordinating donors quickly to meet urgent blood requirements.",
+      "Creating awareness about voluntary blood donation.",
+      "Working closely with hospitals and blood banks.",
+      "Timely blood support helps save lives.",
+      "Encouraging healthy donors to come forward.",
+      "Every blood donation is a gift of life.",
+      "Emergency response is handled with priority.",
+      "This activity strengthens community responsibility.",
+    ],
+  },
+  {
+    id: "ACT006",
+    label: "Distribution of Clothes and Essential Items to the Poor",
+    titles: [
+      "Clothing with Dignity",
+      "Essential Support",
+      "Care Beyond Food",
+      "Warmth and Comfort",
+      "Basic Needs Assistance",
+      "Relief Distribution",
+      "Helping Hands",
+      "Humanitarian Aid",
+      "Support for Survival",
+      "Compassion in Action",
+    ],
+    descriptions: [
+      "Providing clothes and essential items to poor families.",
+      "Distribution includes blankets, footwear, and daily necessities.",
+      "Special drives are conducted during winter and monsoon.",
+      "Items are distributed respectfully and fairly.",
+      "This support restores dignity and comfort.",
+      "Reaching slums, streets, and remote areas.",
+      "Donated items are cleaned and sorted before use.",
+      "Helping families survive harsh conditions.",
+      "Complements food distribution initiatives.",
+      "Every item shared carries compassion.",
+    ],
+  },
+  {
+    id: "ACT007",
+    label: "Helping Helpless and Homeless People with Food and Basic Needs",
+    titles: [
+      "Care for the Homeless",
+      "Street Outreach",
+      "Food and Basic Care",
+      "Hope for the Helpless",
+      "Support Without Judgment",
+      "Human Touch",
+      "Restoring Dignity",
+      "Care on Streets",
+      "Helping Lives",
+      "Serving Humanity",
+    ],
+    descriptions: [
+      "Reaching homeless individuals with food and basic necessities.",
+      "Providing water, clothing, and essential care.",
+      "Street outreach programs focus on the most vulnerable.",
+      "Helping restore dignity and hope among homeless people.",
+      "Support is provided without discrimination.",
+      "Special care during extreme weather conditions.",
+      "Volunteers build trust through regular help.",
+      "Reducing suffering on the streets.",
+      "Offering compassion and human connection.",
+      "Humanity is the core of this initiative.",
+    ],
+  },
+  {
+    id: "ACT008",
+    label: "Support to Elderly People Who Have No Family Support",
+    titles: [
+      "Care for Seniors",
+      "Respect for Elders",
+      "Support Without Family",
+      "Dignity in Old Age",
+      "Food and Care",
+      "Emotional Support",
+      "Compassionate Assistance",
+      "Helping the Forgotten",
+      "Senior Welfare",
+      "Serving with Respect",
+    ],
+    descriptions: [
+      "Supporting elderly people who lack family care.",
+      "Providing meals and basic necessities to seniors.",
+      "Reducing loneliness and neglect among the elderly.",
+      "Treating elders with dignity and respect.",
+      "Focusing on emotional and social well-being.",
+      "Special attention to nutrition and health.",
+      "Regular visits ensure continuous support.",
+      "Helping seniors live with dignity.",
+      "Care reflects gratitude toward elders.",
+      "Serving elders is serving humanity.",
+    ],
+  },
+  {
+    id: "ACT009",
+    label: "Assistance to Economically Weak Families",
+    titles: [
+      "Support for Families",
+      "Economic Relief",
+      "Helping the Needy",
+      "Emergency Assistance",
+      "Aid for Survival",
+      "Care During Hardship",
+      "Family Support Program",
+      "Relief with Compassion",
+      "Standing with the Poor",
+      "Hope for Families",
+    ],
+    descriptions: [
+      "Helping financially weak families during difficult times.",
+      "Providing food supplies and emergency assistance.",
+      "Supporting families facing sudden financial crises.",
+      "Ensuring access to basic necessities.",
+      "Reducing stress caused by poverty.",
+      "Targeting the most vulnerable households.",
+      "Helping families regain stability.",
+      "Support offered with dignity and care.",
+      "Strengthening community resilience.",
+      "Empowering families through relief support.",
+    ],
+  },
+  {
+    id: "ACT010",
+    label: "Awareness Programs for Social Welfare",
+    titles: [
+      "Social Awareness",
+      "Community Education",
+      "Health and Hygiene",
+      "Responsible Society",
+      "Knowledge for Change",
+      "Public Awareness Drives",
+      "Building Better Communities",
+      "Social Responsibility",
+      "Awareness for Welfare",
+      "Educate and Empower",
+    ],
+    descriptions: [
+      "Conducting awareness programs for social welfare.",
+      "Promoting health, hygiene, and cleanliness.",
+      "Encouraging blood donation and social responsibility.",
+      "Spreading awareness about food wastage prevention.",
+      "Educating communities on basic welfare issues.",
+      "Programs are conducted at grassroots level.",
+      "Building informed and responsible citizens.",
+      "Awareness leads to long-term social change.",
+      "Engaging communities through education.",
+      "Knowledge empowers society.",
+    ],
+  },
+  {
+    id: "ACT011",
+    label: "Helping People During Accidents and Medical Emergencies",
+    titles: [
+      "Emergency Medical Help",
+      "Accident Support",
+      "Immediate Assistance",
+      "Critical Care Help",
+      "Rapid Response",
+      "Life Saving Aid",
+      "Medical Crisis Support",
+      "Helping in Emergencies",
+      "Standing in Crisis",
+      "Support When Needed",
+    ],
+    descriptions: [
+      "Providing immediate help during accidents and medical emergencies.",
+      "Assisting with food, blood support, and guidance.",
+      "Helping families navigate emergency situations.",
+      "Quick coordination reduces response time.",
+      "Supporting patients during critical moments.",
+      "Working closely with hospitals and volunteers.",
+      "Ensuring timely help reaches those in need.",
+      "Reducing panic and confusion during emergencies.",
+      "Saving lives through rapid action.",
+      "Compassion drives every response.",
+    ],
+  },
+  {
+    id: "ACT012",
+    label: "Other Humanitarian and Social Service Activities",
+    titles: [
+      "Humanitarian Initiatives",
+      "Social Service Programs",
+      "Serving Humanity",
+      "Community Upliftment",
+      "Compassionate Action",
+      "Welfare Activities",
+      "Helping Communities",
+      "Social Responsibility",
+      "Care for Society",
+      "Humanity First",
+    ],
+    descriptions: [
+      "Engaging in various humanitarian and social service activities.",
+      "Supporting vulnerable communities in different ways.",
+      "Responding to emerging social needs.",
+      "Uplifting society through compassionate action.",
+      "Promoting values of humanity and dignity.",
+      "Adapting initiatives based on community needs.",
+      "Working for inclusive social development.",
+      "Serving beyond defined programs.",
+      "Every activity aims to help those in need.",
+      "Humanity remains the core mission.",
+    ],
+  },
+];
+
 const GalleryPage: React.FC = () => {
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [showModal, setShowModal] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
   const [editingItem, setEditingItem] = useState<GalleryItem | null>(null);
   const [uploading, setUploading] = useState(false);
   const [pdfPreview, setPdfPreview] = useState<string | null>(null);
-
+  const { data } = useSwr("services");
+  console.log(data);
   const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    category: "other",
+    category: "food-distribution-poor",
     date: new Date().toISOString().split("T")[0],
   });
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [filePreviews, setFilePreviews] = useState<string[]>([]);
-
-  const categories = [
-    {
-      value: "all",
-      label: "All Categories",
-      color: "from-purple-500 to-pink-500",
-    },
-    {
-      value: "food-rescue",
-      label: "Food Rescue",
-      color: "from-green-500 to-emerald-500",
-    },
-    {
-      value: "blood-donation",
-      label: "Blood Donation",
-      color: "from-red-500 to-rose-500",
-    },
-    {
-      value: "child-welfare",
-      label: "Child Welfare",
-      color: "from-blue-500 to-cyan-500",
-    },
-    { value: "events", label: "Events", color: "from-orange-500 to-amber-500" },
-    { value: "other", label: "Other", color: "from-slate-500 to-gray-500" },
-  ];
 
   useEffect(() => {
     fetchGallery();
@@ -88,7 +400,7 @@ const GalleryPage: React.FC = () => {
   const fetchGallery = async () => {
     try {
       const params = new URLSearchParams();
-      params.append("category", category);
+      if (category !== "all") params.append("category", category);
       params.append("limit", "100");
       if (startDate) params.append("startDate", startDate);
       if (endDate) params.append("endDate", endDate);
@@ -106,6 +418,19 @@ const GalleryPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Generate random title and description based on category
+  const generateContent = (categoryValue: string) => {
+    const cat = categories.find((c) => c.label === categoryValue);
+    if (!cat || cat.titles.length === 0) return { title: "", description: "" };
+
+    const randomTitle =
+      cat.titles[Math.floor(Math.random() * cat.titles.length)];
+    const randomDesc =
+      cat.descriptions[Math.floor(Math.random() * cat.descriptions.length)];
+
+    return { title: randomTitle, description: randomDesc };
   };
 
   const getFileType = (file: File | string): "image" | "video" | "pdf" => {
@@ -175,9 +500,11 @@ const GalleryPage: React.FC = () => {
     setUploading(true);
 
     try {
+      const { title, description } = generateContent(formData.category);
+
       const formDataToSend = new FormData();
-      formDataToSend.append("title", formData.title);
-      formDataToSend.append("description", formData.description);
+      formDataToSend.append("title", title);
+      formDataToSend.append("description", description);
       formDataToSend.append("category", formData.category);
       formDataToSend.append("date", formData.date);
 
@@ -197,7 +524,7 @@ const GalleryPage: React.FC = () => {
       });
 
       if (response.ok) {
-        setShowModal(false);
+        setShowDrawer(false);
         setEditingItem(null);
         resetForm();
         fetchGallery();
@@ -233,19 +560,15 @@ const GalleryPage: React.FC = () => {
   const handleEdit = (item: GalleryItem) => {
     setEditingItem(item);
     setFormData({
-      title: item.title,
-      description: item.description || "",
       category: item.category,
       date: new Date(item.date).toISOString().split("T")[0],
     });
-    setShowModal(true);
+    setShowDrawer(true);
   };
 
   const resetForm = () => {
     setFormData({
-      title: "",
-      description: "",
-      category: "other",
+      category: "food-distribution-poor",
       date: new Date().toISOString().split("T")[0],
     });
     filePreviews.forEach((url) => URL.revokeObjectURL(url));
@@ -253,29 +576,15 @@ const GalleryPage: React.FC = () => {
     setFilePreviews([]);
   };
 
-  const handleCloseModal = () => {
-    setShowModal(false);
+  const handleCloseDrawer = () => {
+    setShowDrawer(false);
     setEditingItem(null);
     resetForm();
   };
 
-  // Enhanced Media Carousel Component
+  // Media Carousel Component with dots
   const MediaCarousel = ({ files }: { files: GalleryFile[] }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [autoPlay, setAutoPlay] = useState(true);
-
-    useEffect(() => {
-      if (files.length > 1 && autoPlay) {
-        const currentFile = files[currentIndex];
-        // Don't auto-advance on videos
-        if (currentFile.type !== "video") {
-          const interval = setInterval(() => {
-            setCurrentIndex((prev) => (prev + 1) % files.length);
-          }, 4000);
-          return () => clearInterval(interval);
-        }
-      }
-    }, [files.length, currentIndex, autoPlay]);
 
     if (files.length === 0) return null;
 
@@ -283,60 +592,42 @@ const GalleryPage: React.FC = () => {
 
     const nextSlide = () => {
       setCurrentIndex((prev) => (prev + 1) % files.length);
-      setAutoPlay(false);
     };
 
     const prevSlide = () => {
       setCurrentIndex((prev) => (prev - 1 + files.length) % files.length);
-      setAutoPlay(false);
     };
 
     return (
-      <div className="relative h-64 w-full bg-slate-900 overflow-hidden group">
+      <div className="relative w-full h-96 bg-slate-900 overflow-hidden group">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentIndex}
-            initial={{ opacity: 0, x: 100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -100 }}
-            transition={{ duration: 0.5 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
             className="absolute inset-0"
           >
             {currentFile.type === "video" ? (
-              <div className="relative h-full w-full">
-                <video
-                  src={currentFile.url}
-                  controls
-                  className="w-full h-full object-contain"
-                  poster={currentFile.url.replace(/\.[^/.]+$/, ".jpg")}
-                >
-                  Your browser does not support the video tag.
-                </video>
-                <div className="absolute top-4 left-4 bg-red-500/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5">
-                  <PlayCircle className="w-3.5 h-3.5" />
-                  Video
-                </div>
-              </div>
+              <video
+                src={currentFile.url}
+                controls
+                className="w-full h-full object-contain bg-black"
+              />
             ) : currentFile.type === "pdf" ? (
-              <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+              <div className="h-full w-full flex items-center justify-center bg-slate-800">
                 <button
                   onClick={() => setPdfPreview(currentFile.url)}
-                  className="flex flex-col items-center gap-4 group/pdf"
+                  className="flex flex-col items-center gap-4 hover:scale-105 transition-transform"
                 >
-                  <div className="p-6 bg-white/10 rounded-2xl group-hover/pdf:bg-white/20 transition-colors">
-                    <FileText className="w-20 h-20 text-white" />
+                  <div className="p-8 bg-white/10 rounded-3xl">
+                    <FileText className="w-24 h-24 text-white" />
                   </div>
-                  <div className="text-center">
-                    <p className="text-white font-bold text-lg mb-1">
-                      PDF Document
-                    </p>
-                    <p className="text-white/70 text-sm">Click to preview</p>
-                  </div>
+                  <p className="text-white font-bold text-xl">
+                    Click to View PDF
+                  </p>
                 </button>
-                <div className="absolute top-4 left-4 bg-blue-500/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5" />
-                  PDF
-                </div>
               </div>
             ) : (
               <img
@@ -353,43 +644,33 @@ const GalleryPage: React.FC = () => {
           <>
             <button
               onClick={prevSlide}
-              className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm"
+              className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/60 hover:bg-black/80 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-6 h-6" />
             </button>
             <button
               onClick={nextSlide}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm"
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/60 hover:bg-black/80 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-6 h-6" />
             </button>
           </>
         )}
 
-        {/* Indicators */}
+        {/* Dot Indicators */}
         {files.length > 1 && (
-          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-10">
+          <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-2">
             {files.map((_, index) => (
               <button
                 key={index}
-                onClick={() => {
-                  setCurrentIndex(index);
-                  setAutoPlay(false);
-                }}
-                className={`h-1.5 rounded-full transition-all ${
+                onClick={() => setCurrentIndex(index)}
+                className={`h-2 rounded-full transition-all ${
                   currentIndex === index
                     ? "bg-white w-8"
-                    : "bg-white/50 hover:bg-white/75 w-1.5"
+                    : "bg-white/50 hover:bg-white/75 w-2"
                 }`}
               />
             ))}
-          </div>
-        )}
-
-        {/* File Count Badge */}
-        {files.length > 1 && (
-          <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-xs font-bold z-10">
-            {currentIndex + 1} / {files.length}
           </div>
         )}
       </div>
@@ -401,26 +682,26 @@ const GalleryPage: React.FC = () => {
     if (!pdfPreview) return null;
 
     return (
-      <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+      <div className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col"
         >
-          <div className="flex items-center justify-between p-4 border-b">
-            <h3 className="text-lg font-bold">PDF Preview</h3>
+          <div className="flex items-center justify-between p-4 border-b bg-slate-50 rounded-t-2xl">
+            <h3 className="text-xl font-bold text-slate-900">PDF Document</h3>
             <div className="flex items-center gap-2">
               <a
                 href={pdfPreview}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                className="p-2.5 hover:bg-slate-200 rounded-lg transition-colors text-slate-700"
               >
                 <Download className="w-5 h-5" />
               </a>
               <button
                 onClick={() => setPdfPreview(null)}
-                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                className="p-2.5 hover:bg-slate-200 rounded-lg transition-colors text-slate-700"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -436,9 +717,14 @@ const GalleryPage: React.FC = () => {
     );
   };
 
+  // const getCategoryLabel = (categoryValue: string) => {
+  //   const cat = categories.find((c) => c.label === categoryValue);
+  //   return cat?.label || categoryValue;
+  // };
+
   return (
-    <AdminLayout>
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 ">
+      <div className="w-full space-y-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -446,117 +732,120 @@ const GalleryPage: React.FC = () => {
           className="flex flex-col md:flex-row md:items-center justify-between gap-4"
         >
           <div>
-            <h1 className="text-5xl font-black text-slate-900 tracking-tight mb-2">
-              Gallery Manager
+            <h1 className="text-4xl md:text-5xl font-black text-slate-900 mb-2">
+              Humanitarian Services Gallery
             </h1>
             <p className="text-slate-600 text-lg">
-              Manage your media with style ✨
+              Documenting our journey of service to humanity ❤️
             </p>
           </div>
 
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold rounded-2xl shadow-lg shadow-purple-500/30"
+            onClick={() => setShowDrawer(true)}
+            className="flex items-center gap-2 px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg"
           >
             <Plus className="w-5 h-5" />
-            Add New Media
+            Add Service Activity
           </motion.button>
         </motion.div>
-
-        {/* Category Filter */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="flex flex-wrap gap-3"
-        >
-          {categories.map((cat) => (
-            <motion.button
-              key={cat.value}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setCategory(cat.value)}
-              className={`px-6 py-3 rounded-xl font-bold text-sm transition-all ${
-                category === cat.value
-                  ? `bg-gradient-to-r ${cat.color} text-white shadow-lg`
-                  : "bg-white text-slate-700 hover:shadow-md"
-              }`}
-            >
-              {cat.label}
-            </motion.button>
-          ))}
-        </motion.div>
-
         {/* Date Filter */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg"
+          className="bg-white rounded-2xl p-6 shadow-lg"
         >
-          <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">
-            Filter by Date
-          </h3>
-
-          <div className="flex flex-wrap items-center gap-3 mb-4">
-            {[
-              { label: "Today", days: 0 },
-              { label: "Last 3 Days", days: 3 },
-              { label: "Last Week", days: 7 },
-              { label: "Last Month", days: 30 },
-            ].map((preset) => (
-              <button
-                key={preset.label}
-                onClick={() => {
-                  const today = new Date();
-                  const past = new Date(today);
-                  past.setDate(today.getDate() - preset.days);
-                  setStartDate(past.toISOString().split("T")[0]);
-                  setEndDate(today.toISOString().split("T")[0]);
-                }}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition-colors"
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-semibold text-slate-600">
-                From:
-              </label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="px-4 py-2 border-2 border-slate-200 rounded-lg text-sm focus:outline-none focus:border-purple-500 transition-colors"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-semibold text-slate-600">
-                To:
-              </label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="px-4 py-2 border-2 border-slate-200 rounded-lg text-sm focus:outline-none focus:border-purple-500 transition-colors"
-              />
-            </div>
-            {(startDate || endDate) && (
+          <div className="w-full flex items-center justify-between pb-2">
+            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">
+              Filter
+            </h3>
+            {(startDate || endDate || category) && (
               <button
                 onClick={() => {
                   setStartDate("");
                   setEndDate("");
+                  setCategory("");
                 }}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-bold transition-colors"
+                type="button"
+                className="px-4 py-2 bg-blue-600 cursor-pointer hover:bg-blue-700 text-white rounded-lg text-sm font-bold transition-colors"
               >
-                Clear
+                Clear Dates
               </button>
             )}
+          </div>
+          <div className="w-full flex items-center justify-between">
+            <div className=" flex items-center gap-3">
+              <label className="text-sm font-semibold text-slate-600  block">
+                Quick Date Range:
+              </label>
+              <select
+                onChange={(e) => {
+                  const days = parseInt(e.target.value);
+                  if (days === -1) {
+                    setStartDate("-1");
+                    setEndDate("");
+                    return;
+                  }
+                  const today = new Date();
+                  const past = new Date(today);
+                  past.setDate(today.getDate() - days);
+                  setStartDate(past.toISOString().split("T")[0]);
+                  setEndDate(today.toISOString().split("T")[0]);
+                }}
+                className="px-4 py-2 text-gray-900 border border-slate-400 rounded-lg  focus:outline-none focus:border-blue-500 transition-colors bg-white"
+                defaultValue="-1"
+              >
+                <option value="-1">Select date range</option>
+                <option value="0">Today</option>
+                <option value="7">Last Week</option>
+                <option value="30">Last Month</option>
+                <option value="90">Last 3 Months</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-semibold text-slate-600  block">
+                Category:
+              </label>
+              <select
+                onChange={(e) => setCategory(e.target.value)}
+                className="px-4 py-2 max-w-56 text-gray-900 border border-slate-400 rounded-lg  focus:outline-none focus:border-blue-500 transition-colors bg-white"
+                defaultValue=""
+              >
+                <option value="">Select category</option>
+                {data &&
+                  data?.services?.length > 0 &&
+                  data?.services?.map(
+                    (item: { title: string; _id: string }) => (
+                      <option key={item?._id} value={item.title}>
+                        {item.title}
+                      </option>
+                    )
+                  )}
+              </select>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <label className=" font-semibold text-slate-600">From:</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="px-4 py-2 border text-gray-900 border-slate-400 rounded-lg  focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className=" font-semibold text-slate-600">To:</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="px-4 py-2 border text-gray-900 border-slate-400 rounded-lg  focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+            </div>
           </div>
         </motion.div>
 
@@ -568,8 +857,8 @@ const GalleryPage: React.FC = () => {
                 key={i}
                 className="bg-white rounded-2xl overflow-hidden shadow-lg animate-pulse"
               >
-                <div className="h-64 bg-slate-200" />
-                <div className="p-5 space-y-3">
+                <div className="h-96 bg-slate-200" />
+                <div className="p-6 space-y-3">
                   <div className="h-6 bg-slate-200 rounded" />
                   <div className="h-4 bg-slate-200 rounded w-3/4" />
                 </div>
@@ -582,18 +871,18 @@ const GalleryPage: React.FC = () => {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-white rounded-2xl p-16 text-center shadow-lg"
           >
-            <ImageIcon className="w-24 h-24 text-slate-300 mx-auto mb-6" />
+            <div className="text-6xl mb-6">🤝</div>
             <h3 className="text-3xl font-black text-slate-900 mb-3">
-              No Media Found
+              No Activities Found
             </h3>
             <p className="text-slate-600 text-lg mb-8">
-              Start by uploading your first gallery item
+              Start documenting your humanitarian services
             </p>
             <button
-              onClick={() => setShowModal(true)}
-              className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all"
+              onClick={() => setShowDrawer(true)}
+              className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all"
             >
-              Upload Now
+              Add First Activity
             </button>
           </motion.div>
         ) : (
@@ -604,27 +893,19 @@ const GalleryPage: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                whileHover={{ y: -8 }}
                 className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden"
               >
                 {/* Media Carousel */}
                 <div className="relative">
                   <MediaCarousel files={item.files || []} />
 
-                  {/* Category Badge */}
-                  <div className="absolute top-4 left-4 z-20">
-                    <span className="px-4 py-1.5 bg-white/90 backdrop-blur-sm text-purple-600 font-bold text-xs uppercase tracking-wider rounded-full shadow-lg">
-                      {item.category.replace("-", " ")}
-                    </span>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                  {/* Action Buttons */}
+                  <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                       onClick={() => handleEdit(item)}
-                      className="p-2.5 bg-white/90 hover:bg-white rounded-xl transition-colors shadow-lg"
+                      className="p-3 bg-white/90 hover:bg-white rounded-xl transition-colors shadow-lg"
                     >
                       <Edit className="w-5 h-5 text-slate-700" />
                     </motion.button>
@@ -632,26 +913,33 @@ const GalleryPage: React.FC = () => {
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                       onClick={() => handleDelete(item._id)}
-                      className="p-2.5 bg-red-500/90 hover:bg-red-600 rounded-xl transition-colors shadow-lg"
+                      className="p-3 bg-red-500/90 hover:bg-red-600 rounded-xl transition-colors shadow-lg"
                     >
                       <Trash2 className="w-5 h-5 text-white" />
                     </motion.button>
                   </div>
+
+                  {/* Category Badge */}
+                  {/* <div className="absolute bottom-4 left-4 z-10">
+                    <div className="px-4 py-2 bg-black/70 backdrop-blur-sm text-white font-bold text-sm rounded-lg flex items-center gap-2">
+                      {getCategoryLabel(item.category)}
+                    </div>
+                  </div> */}
                 </div>
 
                 {/* Content */}
-                <div className="p-5 space-y-3">
-                  <h3 className="text-xl font-black text-slate-900 line-clamp-1">
+                <div className="p-6 space-y-3">
+                  <h3 className="text-xl font-black text-slate-900">
                     {item.title}
                   </h3>
 
                   {item.description && (
-                    <p className="text-slate-600 text-sm leading-relaxed line-clamp-2">
+                    <p className="text-slate-600 text-sm leading-relaxed">
                       {item.description}
                     </p>
                   )}
 
-                  <div className="flex items-center justify-between pt-2">
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                     <div className="flex items-center gap-2 text-sm text-slate-500">
                       <Calendar className="w-4 h-4" />
                       {new Date(item.date).toLocaleDateString("en-US", {
@@ -662,8 +950,7 @@ const GalleryPage: React.FC = () => {
                     </div>
 
                     {item.files.length > 1 && (
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-purple-600 bg-purple-50 px-3 py-1 rounded-full">
-                        <ImageIcon className="w-3 h-3" />
+                      <div className="flex items-center gap-1 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
                         {item.files.length} files
                       </div>
                     )}
@@ -674,45 +961,56 @@ const GalleryPage: React.FC = () => {
           </div>
         )}
 
-        {/* Upload Modal */}
+        {/* Right Side Drawer */}
         <AnimatePresence>
-          {showModal && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          {showDrawer && (
+            <>
+              {/* Backdrop */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={handleCloseDrawer}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+              />
+
+              {/* Drawer */}
+              <motion.div
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="fixed right-0 top-0 h-full w-full md:w-[600px] bg-white shadow-2xl z-50 overflow-y-auto"
               >
-                {/* Modal Header */}
-                <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-pink-600 p-6 flex items-center justify-between z-10 rounded-t-3xl">
+                {/* Drawer Header */}
+                <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-purple-600 p-6 flex items-center justify-between z-10">
                   <h2 className="text-2xl font-black text-white">
-                    {editingItem ? "Edit Media" : "Add New Media"}
+                    {editingItem ? "Edit Activity" : "Add New Activity"}
                   </h2>
                   <button
-                    onClick={handleCloseModal}
+                    onClick={handleCloseDrawer}
                     className="p-2 hover:bg-white/20 rounded-xl transition-colors"
                   >
                     <X className="w-6 h-6 text-white" />
                   </button>
                 </div>
 
-                {/* Modal Body */}
+                {/* Drawer Body */}
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                   {/* File Upload */}
                   <div>
                     <label className="block text-slate-900 font-bold text-sm mb-3">
-                      Upload Files *
+                      Upload Media Files *
                     </label>
 
                     {filePreviews.length > 0 ? (
                       <>
-                        <div className="grid grid-cols-3 gap-3 mb-4">
+                        <div className="grid grid-cols-2 gap-3 mb-4">
                           {filePreviews.map((preview, index) => {
                             const fileType = getFileType(selectedFiles[index]);
                             return (
                               <div key={index} className="relative group">
-                                <div className="relative h-32 rounded-xl overflow-hidden border-2 border-slate-200">
+                                <div className="relative h-40 rounded-xl overflow-hidden border-2 border-slate-200">
                                   {fileType === "video" ? (
                                     <video
                                       src={preview}
@@ -742,7 +1040,7 @@ const GalleryPage: React.FC = () => {
                           })}
                         </div>
 
-                        <label className="inline-flex items-center gap-2 px-5 py-3 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-xl cursor-pointer transition-colors font-bold text-sm">
+                        <label className="inline-flex items-center gap-2 px-5 py-3 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-xl cursor-pointer transition-colors font-bold text-sm">
                           <Plus className="w-5 h-5" />
                           Add More Files
                           <input
@@ -757,11 +1055,11 @@ const GalleryPage: React.FC = () => {
                       </>
                     ) : (
                       <label className="block cursor-pointer">
-                        <div className="h-64 rounded-2xl border-2 border-dashed border-slate-300 hover:border-purple-400 flex items-center justify-center bg-slate-50 hover:bg-purple-50 transition-all">
+                        <div className="h-64 rounded-2xl border-2 border-dashed border-slate-300 hover:border-blue-400 flex items-center justify-center bg-slate-50 hover:bg-blue-50 transition-all">
                           <div className="text-center">
                             <Upload className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                             <p className="text-slate-700 font-bold text-lg mb-2">
-                              Click to upload files
+                              Click to upload media
                             </p>
                             <p className="text-slate-500 text-sm">
                               Images, Videos, or PDFs (Max 10MB each)
@@ -780,46 +1078,10 @@ const GalleryPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Title */}
-                  <div>
-                    <label className="block text-slate-900 font-bold text-sm mb-3">
-                      Title *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.title}
-                      onChange={(e) =>
-                        setFormData({ ...formData, title: e.target.value })
-                      }
-                      className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 font-medium focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
-                      placeholder="Enter a catchy title..."
-                    />
-                  </div>
-
-                  {/* Description */}
-                  <div>
-                    <label className="block text-slate-900 font-bold text-sm mb-3">
-                      Description
-                    </label>
-                    <textarea
-                      value={formData.description}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          description: e.target.value,
-                        })
-                      }
-                      rows={3}
-                      className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 font-medium focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all resize-none"
-                      placeholder="Add a brief description..."
-                    />
-                  </div>
-
                   {/* Category */}
                   <div>
                     <label className="block text-slate-900 font-bold text-sm mb-3">
-                      Category *
+                      Service Category *
                     </label>
                     <select
                       required
@@ -827,34 +1089,34 @@ const GalleryPage: React.FC = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, category: e.target.value })
                       }
-                      className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+                      className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                     >
-                      {categories
-                        .filter((cat) => cat.value !== "all")
-                        .map((cat) => (
-                          <option key={cat.value} value={cat.value}>
-                            {cat.label}
-                          </option>
-                        ))}
+                      <option value="">Select Service Category</option>
+                      {categories.slice(0, -1).map((cat) => (
+                        <option key={cat.label} value={cat.label}>
+                          {cat.label}
+                        </option>
+                      ))}
                     </select>
+                    <p className="text-xs text-slate-500 mt-2">
+                      Title and description will be generated automatically
+                    </p>
                   </div>
 
                   {/* Date */}
                   <div>
                     <label className="block text-slate-900 font-bold text-sm mb-3">
-                      Event Date
+                      Activity Date *
                     </label>
                     <input
                       type="date"
+                      required
                       value={formData.date}
                       onChange={(e) =>
                         setFormData({ ...formData, date: e.target.value })
                       }
-                      className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+                      className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                     />
-                    <p className="text-xs text-slate-500 mt-2">
-                      📊 Statistics will update automatically based on this date
-                    </p>
                   </div>
 
                   {/* Actions */}
@@ -863,7 +1125,7 @@ const GalleryPage: React.FC = () => {
                       type="button"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={handleCloseModal}
+                      onClick={handleCloseDrawer}
                       className="flex-1 px-6 py-4 bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold rounded-xl transition-all"
                       disabled={uploading}
                     >
@@ -874,25 +1136,25 @@ const GalleryPage: React.FC = () => {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       disabled={selectedFiles.length === 0 || uploading}
-                      className="flex-1 px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold rounded-xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      className="flex-1 px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                       {uploading
                         ? "Uploading..."
                         : editingItem
-                          ? "Update Media"
-                          : "Upload Media"}
+                          ? "Update Activity"
+                          : "Add Activity"}
                     </motion.button>
                   </div>
                 </form>
               </motion.div>
-            </div>
+            </>
           )}
         </AnimatePresence>
 
         {/* PDF Preview Modal */}
         <PDFPreviewModal />
       </div>
-    </AdminLayout>
+    </div>
   );
 };
 

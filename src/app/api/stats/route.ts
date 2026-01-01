@@ -1,26 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
 import dbConnect from "@/lib/mongodb";
 import Stat from "@/models/Stat";
-
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
-
-async function verifyAuth(_request: NextRequest) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth_token");
-
-  if (!token) {
-    return null;
-  }
-
-  try {
-    const decoded = jwt.verify(token.value, JWT_SECRET);
-    return decoded;
-  } catch (_error) {
-    return null;
-  }
-}
+import { parse } from "cookie";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,9 +26,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyAuth(request);
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const cookies = parse(request.headers.get("cookie") || "");
+    const token = cookies.token;
+
+    if (!token) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
     await dbConnect();

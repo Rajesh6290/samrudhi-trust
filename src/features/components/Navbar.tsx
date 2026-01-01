@@ -78,14 +78,11 @@ const Navbar = () => {
           <NavLink href="/gallary" isScrolled={isScrolled}>
             Gallery
           </NavLink>
+          <NavLink href="/volunteer" isScrolled={isScrolled}>
+            Volunteer
+          </NavLink>
           <NavLink href="/faq" isScrolled={isScrolled}>
             FAQ
-          </NavLink>
-          <NavLink href="/office" isScrolled={isScrolled}>
-            Team
-          </NavLink>
-          <NavLink href="/feedback" isScrolled={isScrolled}>
-            Feedback
           </NavLink>
           <a
             href="/contact"
@@ -132,6 +129,13 @@ const Navbar = () => {
               onClick={closeMobileMenu}
             >
               Gallery
+            </NavLink>
+            <NavLink
+              href="/volunteer"
+              isScrolled={true}
+              onClick={closeMobileMenu}
+            >
+              Volunteer
             </NavLink>
             <NavLink href="/faq" isScrolled={true} onClick={closeMobileMenu}>
               FAQ

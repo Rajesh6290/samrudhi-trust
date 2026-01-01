@@ -1,8 +1,7 @@
 "use client";
 import DefaultLayouts from "@/features/layouts/DefaultLayouts";
-import PageLoader from "@/features/components/PageLoader";
 import dynamic from "next/dynamic";
-import { Suspense, useState, useEffect } from "react";
+import { Suspense } from "react";
 
 // Dynamically import components for code splitting and optimization
 const HeroSection = dynamic(() => import("@/features/components/HeroSection"), {
@@ -37,13 +36,6 @@ const Gallery = dynamic(() => import("@/features/components/Gallery"), {
   loading: () => <div className="h-96 bg-slate-50 animate-pulse" />,
 });
 
-const VideoSection = dynamic(
-  () => import("@/features/components/VideoSection"),
-  {
-    loading: () => <div className="h-96 bg-white animate-pulse" />,
-  }
-);
-
 const CTASection = dynamic(() => import("@/features/components/CTASection"), {
   loading: () => <div className="h-96 bg-emerald-900 animate-pulse" />,
 });
@@ -54,22 +46,14 @@ const Certifications = dynamic(
   }
 );
 
-export default function HomePage() {
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    // Show loader for minimum 1.5 seconds for smooth experience
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (isLoading) {
-    return <PageLoader />;
+const VolunteerSection = dynamic(
+  () => import("@/features/components/VolunteerSection"),
+  {
+    loading: () => <div className="h-96 bg-emerald-900 animate-pulse" />,
   }
+);
 
+export default function HomePage() {
   return (
     <DefaultLayouts>
       <Suspense
@@ -102,11 +86,15 @@ export default function HomePage() {
       </Suspense>
 
       <Suspense fallback={<div className="h-96 bg-white animate-pulse" />}>
-        <VideoSection />
-      </Suspense>
-      <Suspense fallback={<div className="h-96 bg-white animate-pulse" />}>
         <Certifications />
       </Suspense>
+
+      <Suspense
+        fallback={<div className="h-96 bg-emerald-900 animate-pulse" />}
+      >
+        <VolunteerSection />
+      </Suspense>
+
       <Suspense fallback={<div className="h-96 bg-slate-900 animate-pulse" />}>
         <CTASection />
       </Suspense>
