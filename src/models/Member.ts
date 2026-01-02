@@ -5,6 +5,7 @@ export interface IMember extends Document {
   email: string;
   phone?: string;
   photo: string;
+  bloodGroup: string;
   joiningDate: Date;
   role?: string;
   bio?: string;
@@ -38,6 +39,12 @@ const memberSchema = new Schema<IMember>(
       type: String,
       required: [true, "Photo is required"],
       default: "/uploads/default-avatar.png",
+    },
+    bloodGroup: {
+      type: String,
+      required: [true, "Blood group is required"],
+      enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
+      trim: true,
     },
     joiningDate: {
       type: Date,

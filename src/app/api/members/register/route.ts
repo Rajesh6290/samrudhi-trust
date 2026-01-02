@@ -13,15 +13,16 @@ export async function POST(request: NextRequest) {
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
     const phone = formData.get("phone") as string;
+    const bloodGroup = formData.get("bloodGroup") as string;
     const joiningDate = formData.get("joiningDate") as string;
     const receivedIdCard = formData.get("receivedIdCard") === "true";
     const receivedTshirt = formData.get("receivedTshirt") === "true";
     const photoFile = formData.get("photo") as File | null;
 
     // Validate required fields
-    if (!name || !email) {
+    if (!name || !email || !bloodGroup) {
       return NextResponse.json(
-        { error: "Name and email are required" },
+        { error: "Name, email, and blood group are required" },
         { status: 400 }
       );
     }
@@ -56,6 +57,7 @@ export async function POST(request: NextRequest) {
       email,
       phone,
       photo: photoUrl,
+      bloodGroup,
       joiningDate: joiningDate || new Date(),
       receivedIdCard,
       receivedTshirt,

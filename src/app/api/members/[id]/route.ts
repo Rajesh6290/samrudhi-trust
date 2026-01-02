@@ -58,8 +58,17 @@ export async function PUT(
     const { id } = await params;
 
     const body = await request.json();
-    const { name, email, phone, photo, joiningDate, role, bio, isActive } =
-      body;
+    const {
+      name,
+      email,
+      phone,
+      photo,
+      bloodGroup,
+      joiningDate,
+      role,
+      bio,
+      isActive,
+    } = body;
 
     // Check if email is being changed and already exists
     if (email) {
@@ -82,6 +91,7 @@ export async function PUT(
         email,
         phone,
         photo,
+        bloodGroup,
         joiningDate,
         role,
         bio,

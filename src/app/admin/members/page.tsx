@@ -21,6 +21,7 @@ interface Member {
   email: string;
   phone?: string;
   photo: string;
+  bloodGroup: string;
   joiningDate: string;
   role?: string;
   bio?: string;
@@ -40,6 +41,7 @@ const MembersPage: React.FC = () => {
     email: "",
     phone: "",
     photo: "",
+    bloodGroup: "",
     role: "Member",
     bio: "",
     joiningDate: new Date().toISOString().split("T")[0],
@@ -144,6 +146,7 @@ const MembersPage: React.FC = () => {
       email: member.email,
       phone: member.phone || "",
       photo: member.photo,
+      bloodGroup: member.bloodGroup,
       role: member.role || "Member",
       bio: member.bio || "",
       joiningDate: new Date(member.joiningDate).toISOString().split("T")[0],
@@ -157,6 +160,7 @@ const MembersPage: React.FC = () => {
       email: "",
       phone: "",
       photo: "",
+      bloodGroup: "",
       role: "Member",
       bio: "",
       joiningDate: new Date().toISOString().split("T")[0],
@@ -421,6 +425,31 @@ const MembersPage: React.FC = () => {
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all font-medium"
                   placeholder="+1 234 567 8900"
                 />
+              </div>
+
+              {/* Blood Group */}
+              <div>
+                <label className="block text-slate-900 font-bold text-sm uppercase tracking-wider mb-2">
+                  Blood Group *
+                </label>
+                <select
+                  required
+                  value={formData.bloodGroup}
+                  onChange={(e) =>
+                    setFormData({ ...formData, bloodGroup: e.target.value })
+                  }
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all font-medium"
+                >
+                  <option value="">Select Blood Group</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                </select>
               </div>
 
               {/* Role */}

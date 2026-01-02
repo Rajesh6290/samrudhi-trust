@@ -73,12 +73,13 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     const body = await request.json();
-    const { name, email, phone, photo, joiningDate, role, bio } = body;
+    const { name, email, phone, photo, bloodGroup, joiningDate, role, bio } =
+      body;
 
     // Validate required fields
-    if (!name || !email || !photo) {
+    if (!name || !email || !photo || !bloodGroup) {
       return NextResponse.json(
-        { error: "Name, email, and photo are required" },
+        { error: "Name, email, photo, and blood group are required" },
         { status: 400 }
       );
     }
@@ -98,6 +99,7 @@ export async function POST(request: NextRequest) {
       email,
       phone,
       photo,
+      bloodGroup,
       joiningDate: joiningDate || new Date(),
       role: role || "Member",
       bio,
