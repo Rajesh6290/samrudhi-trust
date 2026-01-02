@@ -136,10 +136,10 @@ export default function MemberRegisterPage() {
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 value={formik.values.name}
-                className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border ${
+                className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg text-gray-900 border ${
                   formik.touched.name && formik.errors.name
                     ? "border-red-500 focus:ring-red-500"
-                    : "border-gray-300 focus:ring-indigo-500"
+                    : "border-gray-400 focus:ring-indigo-500"
                 } focus:ring-2 focus:border-transparent transition`}
                 placeholder="Enter your full name"
               />
@@ -165,10 +165,10 @@ export default function MemberRegisterPage() {
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 value={formik.values.email}
-                className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border ${
+                className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg text-gray-900 border ${
                   formik.touched.email && formik.errors.email
                     ? "border-red-500 focus:ring-red-500"
-                    : "border-gray-300 focus:ring-indigo-500"
+                    : "border-gray-400 focus:ring-indigo-500"
                 } focus:ring-2 focus:border-transparent transition`}
                 placeholder="your.email@example.com"
               />
@@ -194,10 +194,10 @@ export default function MemberRegisterPage() {
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 value={formik.values.phone}
-                className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border ${
+                className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg text-gray-900 border ${
                   formik.touched.phone && formik.errors.phone
                     ? "border-red-500 focus:ring-red-500"
-                    : "border-gray-300 focus:ring-indigo-500"
+                    : "border-gray-400 focus:ring-indigo-500"
                 } focus:ring-2 focus:border-transparent transition`}
                 placeholder="10 digit phone number"
               />
@@ -277,10 +277,10 @@ export default function MemberRegisterPage() {
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 value={formik.values.joiningDate}
-                className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border ${
+                className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg text-gray-900 border ${
                   formik.touched.joiningDate && formik.errors.joiningDate
                     ? "border-red-500 focus:ring-red-500"
-                    : "border-gray-300 focus:ring-indigo-500"
+                    : "border-gray-400 focus:ring-indigo-500"
                 } focus:ring-2 focus:border-transparent transition`}
               />
               {formik.touched.joiningDate && formik.errors.joiningDate && (
@@ -310,11 +310,11 @@ export default function MemberRegisterPage() {
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   value={String(formik.values.receivedIdCard)}
-                  className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border ${
+                  className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg text-gray-900 border ${
                     formik.touched.receivedIdCard &&
                     formik.errors.receivedIdCard
                       ? "border-red-500 focus:ring-red-500"
-                      : "border-gray-300 focus:ring-indigo-500"
+                      : "border-gray-400 focus:ring-indigo-500"
                   } focus:ring-2 focus:border-transparent transition bg-white`}
                 >
                   <option value="">Select an option</option>
@@ -343,11 +343,11 @@ export default function MemberRegisterPage() {
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   value={String(formik.values.receivedTshirt)}
-                  className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border ${
+                  className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg text-gray-900 border ${
                     formik.touched.receivedTshirt &&
                     formik.errors.receivedTshirt
                       ? "border-red-500 focus:ring-red-500"
-                      : "border-gray-300 focus:ring-indigo-500"
+                      : "border-gray-400 focus:ring-indigo-500"
                   } focus:ring-2 focus:border-transparent transition bg-white`}
                 >
                   <option value="">Select an option</option>
