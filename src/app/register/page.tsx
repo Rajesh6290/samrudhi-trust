@@ -134,7 +134,7 @@ export default function MemberRegisterPage() {
                 value={formik.values.name}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg border border-gray-300 focus:ring-indigo-500 focus:ring-2 focus:border-transparent transition"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg border text-gray-800 border-gray-400 focus:ring-indigo-500 focus:ring-2 focus:border-transparent transition"
                 placeholder="Enter your full name"
               />
               {formik.touched.name && formik.errors.name && (
@@ -155,7 +155,7 @@ export default function MemberRegisterPage() {
                 value={formik.values.email}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg border border-gray-300 focus:ring-indigo-500 focus:ring-2 focus:border-transparent transition"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg border text-gray-800 border-gray-400 focus:ring-indigo-500 focus:ring-2 focus:border-transparent transition"
                 placeholder="your.email@example.com"
               />
               {formik.touched.email && formik.errors.email && (
@@ -176,7 +176,7 @@ export default function MemberRegisterPage() {
                 value={formik.values.phone}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg border border-gray-300 focus:ring-indigo-500 focus:ring-2 focus:border-transparent transition"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg border text-gray-800 border-gray-400 focus:ring-indigo-500 focus:ring-2 focus:border-transparent transition"
                 placeholder="9876543210"
               />
               {formik.touched.phone && formik.errors.phone && (
@@ -196,7 +196,7 @@ export default function MemberRegisterPage() {
                 value={formik.values.bloodGroup}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg border border-gray-300 focus:ring-indigo-500 focus:ring-2 focus:border-transparent transition"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg border text-gray-800 border-gray-400 focus:ring-indigo-500 focus:ring-2 focus:border-transparent transition"
               >
                 <option value="">Select Blood Group</option>
                 <option value="A+">A+</option>
@@ -241,7 +241,7 @@ export default function MemberRegisterPage() {
                   }
                 }}
                 onBlur={formik.handleBlur}
-                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg border border-gray-300 focus:ring-indigo-500 focus:ring-2 focus:border-transparent transition file:mr-2 sm:file:mr-4 file:py-1.5 sm:file:py-2 file:px-3 sm:file:px-4 file:rounded-md file:border-0 file:text-xs sm:file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 file:cursor-pointer"
+                className="w-full px-3 text-gray-900 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg border border-gray-300 focus:ring-indigo-500 focus:ring-2 focus:border-transparent transition file:mr-2 sm:file:mr-4 file:py-1.5 sm:file:py-2 file:px-3 sm:file:px-4 file:rounded-md file:border-0 file:text-xs sm:file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 file:cursor-pointer"
               />
               {photoPreview && (
                 <div className="mt-3 sm:mt-4">
@@ -275,7 +275,7 @@ export default function MemberRegisterPage() {
                 value={formik.values.joiningDate}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg border border-gray-300 focus:ring-indigo-500 focus:ring-2 focus:border-transparent transition"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg border text-gray-800 border-gray-400 focus:ring-indigo-500 focus:ring-2 focus:border-transparent transition"
               />
               {formik.touched.joiningDate && formik.errors.joiningDate && (
                 <p className="mt-1 text-xs sm:text-sm text-red-600">
@@ -300,7 +300,7 @@ export default function MemberRegisterPage() {
                   value={formik.values.receivedIdCard}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
-                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg border border-gray-300 focus:ring-indigo-500 focus:ring-2 focus:border-transparent transition"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg border text-gray-800 border-gray-400 focus:ring-indigo-500 focus:ring-2 focus:border-transparent transition"
                 >
                   <option value="">Select an option</option>
                   <option value="true">Yes</option>
@@ -324,7 +324,7 @@ export default function MemberRegisterPage() {
                   value={formik.values.receivedTshirt}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
-                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg border border-gray-300 focus:ring-indigo-500 focus:ring-2 focus:border-transparent transition"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg border text-gray-800 border-gray-400 focus:ring-indigo-500 focus:ring-2 focus:border-transparent transition"
                 >
                   <option value="">Select an option</option>
                   <option value="true">Yes</option>
