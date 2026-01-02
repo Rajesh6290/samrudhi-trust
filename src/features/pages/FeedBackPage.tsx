@@ -216,7 +216,7 @@ ${formData.improvements ? `Suggested Improvements:\n${formData.improvements}` : 
       </section>
 
       {/* Feedback Form Section */}
-      <section className="py-20 bg-gradient-to-br from-emerald-50 via-white to-teal-50 relative">
+      <section className="py-20 bg-linear-to-br from-emerald-50 via-white to-teal-50 relative">
         {/* Decorative Elements */}
         <div className="absolute top-20 left-10 w-64 h-64 bg-emerald-200/20 rounded-full blur-3xl"></div>
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-teal-200/20 rounded-full blur-3xl"></div>
@@ -278,7 +278,7 @@ ${formData.improvements ? `Suggested Improvements:\n${formData.improvements}` : 
             <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8 md:p-12 border border-emerald-100">
               {isSubmitted ? (
                 <div className="text-center py-16">
-                  <div className="inline-flex items-center justify-center w-28 h-28 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 mb-6 animate-bounce">
+                  <div className="inline-flex items-center justify-center w-28 h-28 rounded-full bg-linear-to-br from-emerald-400 to-teal-500 mb-6 animate-bounce">
                     <CheckCircle className="w-14 h-14 text-white" />
                   </div>
                   <h3 className="text-4xl font-black text-slate-800 mb-4">
@@ -436,7 +436,7 @@ ${formData.improvements ? `Suggested Improvements:\n${formData.improvements}` : 
                         type="button"
                         onClick={() => setCurrentStep(2)}
                         disabled={formData.rating === 0 || !formData.category}
-                        className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-4 px-8 rounded-xl font-bold text-lg hover:from-emerald-700 hover:to-teal-700 transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3 shadow-lg"
+                        className="w-full bg-linear-to-r from-emerald-600 to-teal-600 text-white py-4 px-8 rounded-xl font-bold text-lg hover:from-emerald-700 hover:to-teal-700 transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3 shadow-lg"
                       >
                         Continue to Details
                         <Send className="w-5 h-5" />
@@ -547,7 +547,7 @@ ${formData.improvements ? `Suggested Improvements:\n${formData.improvements}` : 
                         <button
                           type="button"
                           onClick={() => setCurrentStep(3)}
-                          className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-4 px-8 rounded-xl font-bold text-lg hover:from-emerald-700 hover:to-teal-700 transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl flex items-center justify-center gap-3 shadow-lg"
+                          className="flex-1 bg-linear-to-r from-emerald-600 to-teal-600 text-white py-4 px-8 rounded-xl font-bold text-lg hover:from-emerald-700 hover:to-teal-700 transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl flex items-center justify-center gap-3 shadow-lg"
                         >
                           Continue
                           <Send className="w-5 h-5" />
@@ -655,7 +655,7 @@ ${formData.improvements ? `Suggested Improvements:\n${formData.improvements}` : 
                             !formData.feedback ||
                             !formData.wouldRecommend
                           }
-                          className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-4 px-8 rounded-xl font-bold text-lg hover:from-emerald-700 hover:to-teal-700 transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3 shadow-lg"
+                          className="flex-1 bg-linear-to-r from-emerald-600 to-teal-600 text-white py-4 px-8 rounded-xl font-bold text-lg hover:from-emerald-700 hover:to-teal-700 transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3 shadow-lg"
                         >
                           {isSubmitting ? (
                             <>

@@ -8,6 +8,8 @@ export interface IMember extends Document {
   joiningDate: Date;
   role?: string;
   bio?: string;
+  receivedIdCard: boolean;
+  receivedTshirt: boolean;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -49,6 +51,14 @@ const memberSchema = new Schema<IMember>(
     bio: {
       type: String,
       trim: true,
+    },
+    receivedIdCard: {
+      type: Boolean,
+      default: false,
+    },
+    receivedTshirt: {
+      type: Boolean,
+      default: false,
     },
     isActive: {
       type: Boolean,
