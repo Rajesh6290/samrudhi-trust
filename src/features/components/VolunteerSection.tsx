@@ -2,18 +2,10 @@
 import { motion } from "framer-motion";
 import { Heart, Users, Clock, CheckCircle, Sparkles } from "lucide-react";
 import { useState } from "react";
+import { Formik, Form, Field, ErrorMessage } from "formik";
+import * as Yup from "yup";
 
 const VolunteerSection = () => {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    city: "",
-    interests: [] as string[],
-    availability: "flexible",
-    whyVolunteer: "",
-  });
-  const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const interestOptions = [
@@ -27,43 +19,54 @@ const VolunteerSection = () => {
     "Fundraising",
   ];
 
-  const handleInterestToggle = (interest: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      interests: prev.interests.includes(interest)
-        ? prev.interests.filter((i) => i !== interest)
-        : [...prev.interests, interest],
-    }));
+  const validationSchema = Yup.object({
+    name: Yup.string()
+      .min(3, "Name must be at least 3 characters")
+      .required("Full name is required"),
+    email: Yup.string()
+      .email("Invalid email address")
+      .required("Email is required"),
+    phone: Yup.string()
+      .matches(/^[0-9]{10}$/, "Phone must be 10 digits")
+      .required("Phone is required"),
+    city: Yup.string()
+      .min(2, "City must be at least 2 characters")
+      .required("City is required"),
+    interest: Yup.string().required("Please select an area of interest"),
+    availability: Yup.string().required("Availability is required"),
+    whyVolunteer: Yup.string(),
+  });
+
+  const initialValues = {
+    name: "",
+    email: "",
+    phone: "",
+    city: "",
+    interest: "",
+    availability: "flexible",
+    whyVolunteer: "",
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
+  const handleSubmit = async (
+    values: typeof initialValues,
+    { setSubmitting, resetForm }: any
+  ) => {
     try {
       const response = await fetch("/api/volunteers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(values),
       });
 
       if (response.ok) {
         setSubmitted(true);
-        setFormData({
-          name: "",
-          email: "",
-          phone: "",
-          city: "",
-          interests: [],
-          availability: "flexible",
-          whyVolunteer: "",
-        });
+        resetForm();
       }
     } catch (error) {
       console.error("Failed to submit volunteer application:", error);
       alert("Failed to submit application. Please try again.");
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -156,28 +159,6 @@ const VolunteerSection = () => {
                 </div>
               </div>
             </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-6">
-              <div className="text-center">
-                <p className="text-4xl font-black text-white mb-2">500+</p>
-                <p className="text-emerald-300 text-sm font-bold">
-                  Active Volunteers
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-4xl font-black text-white mb-2">50+</p>
-                <p className="text-emerald-300 text-sm font-bold">
-                  Cities Covered
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-4xl font-black text-white mb-2">100K+</p>
-                <p className="text-emerald-300 text-sm font-bold">
-                  Hours Served
-                </p>
-              </div>
-            </div>
           </motion.div>
 
           {/* Right Side - Form */}
@@ -206,146 +187,163 @@ const VolunteerSection = () => {
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <h3 className="text-3xl font-black text-slate-900 mb-2">
-                    Apply Now
-                  </h3>
-                  <p className="text-slate-600 text-sm">
-                    Fill out the form below to join our volunteer team
-                  </p>
-                </div>
+              <Formik
+                initialValues={initialValues}
+                validationSchema={validationSchema}
+                onSubmit={handleSubmit}
+              >
+                {({ isSubmitting }) => (
+                  <Form className="space-y-3">
+                    <div>
+                      <h3 className="text-3xl font-black text-slate-900 mb-2">
+                        Apply Now
+                      </h3>
+                      <p className="text-slate-600 text-sm">
+                        Fill out the form below to join our volunteer team
+                      </p>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-emerald-500 focus:outline-none transition-colors"
-                    placeholder="Enter your full name"
-                  />
-                </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">
+                        Full Name *
+                      </label>
+                      <Field
+                        type="text"
+                        name="name"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-400 text-gray-900 focus:border-emerald-500 focus:outline-none transition-colors"
+                        placeholder="Enter your full name"
+                      />
+                      <ErrorMessage
+                        name="name"
+                        component="div"
+                        className="text-red-500 text-sm mt-1"
+                      />
+                    </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">
-                      Email *
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-emerald-500 focus:outline-none transition-colors"
-                      placeholder="your@email.com"
-                    />
-                  </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                          Email *
+                        </label>
+                        <Field
+                          type="email"
+                          name="email"
+                          className="w-full px-4 py-3 rounded-xl border border-gray-400 text-gray-900 focus:border-emerald-500 focus:outline-none transition-colors"
+                          placeholder="your@email.com"
+                        />
+                        <ErrorMessage
+                          name="email"
+                          component="div"
+                          className="text-red-500 text-sm mt-1"
+                        />
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">
-                      Phone *
-                    </label>
-                    <input
-                      type="tel"
-                      required
-                      value={formData.phone}
-                      onChange={(e) =>
-                        setFormData({ ...formData, phone: e.target.value })
-                      }
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-emerald-500 focus:outline-none transition-colors"
-                      placeholder="+91 XXXXX XXXXX"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
-                    City *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.city}
-                    onChange={(e) =>
-                      setFormData({ ...formData, city: e.target.value })
-                    }
-                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-emerald-500 focus:outline-none transition-colors"
-                    placeholder="Your city"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-3">
-                    Areas of Interest
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {interestOptions.map((interest) => (
-                      <button
-                        key={interest}
-                        type="button"
-                        onClick={() => handleInterestToggle(interest)}
-                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                          formData.interests.includes(interest)
-                            ? "bg-emerald-600 text-white"
-                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                        }`}
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                          Phone *
+                        </label>
+                        <Field
+                          type="tel"
+                          name="phone"
+                          className="w-full px-4 py-3 rounded-xl border border-gray-400 text-gray-900 focus:border-emerald-500 focus:outline-none transition-colors"
+                          placeholder="+91 XXXXX XXXXX"
+                        />
+                        <ErrorMessage
+                          name="phone"
+                          component="div"
+                          className="text-red-500 text-sm mt-1"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                          City *
+                        </label>
+                        <Field
+                          type="text"
+                          name="city"
+                          className="w-full px-4 py-3 rounded-xl border border-gray-400 text-gray-900 focus:border-emerald-500 focus:outline-none transition-colors"
+                          placeholder="Your city"
+                        />
+                        <ErrorMessage
+                          name="city"
+                          component="div"
+                          className="text-red-500 text-sm mt-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                          Availability *
+                        </label>
+                        <Field
+                          as="select"
+                          name="availability"
+                          className="w-full px-4 py-3.5 rounded-xl border border-gray-400 text-gray-900 focus:border-emerald-500 focus:outline-none transition-colors"
+                        >
+                          <option value="flexible">Flexible</option>
+                          <option value="weekdays">Weekdays Only</option>
+                          <option value="weekends">Weekends Only</option>
+                          <option value="both">Both Weekdays & Weekends</option>
+                        </Field>
+                        <ErrorMessage
+                          name="availability"
+                          component="div"
+                          className="text-red-500 text-sm mt-1"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">
+                        Area of Interest *
+                      </label>
+                      <Field
+                        as="select"
+                        name="interest"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-400 text-gray-900 focus:border-emerald-500 focus:outline-none transition-colors"
                       >
-                        {interest}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                        <option value="">Select an area of interest</option>
+                        {interestOptions.map((interest) => (
+                          <option key={interest} value={interest}>
+                            {interest}
+                          </option>
+                        ))}
+                      </Field>
+                      <ErrorMessage
+                        name="interest"
+                        component="div"
+                        className="text-red-500 text-sm mt-1"
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
-                    Availability *
-                  </label>
-                  <select
-                    required
-                    value={formData.availability}
-                    onChange={(e) =>
-                      setFormData({ ...formData, availability: e.target.value })
-                    }
-                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-emerald-500 focus:outline-none transition-colors"
-                  >
-                    <option value="flexible">Flexible</option>
-                    <option value="weekdays">Weekdays Only</option>
-                    <option value="weekends">Weekends Only</option>
-                    <option value="both">Both Weekdays & Weekends</option>
-                  </select>
-                </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">
+                        Why do you want to volunteer?
+                      </label>
+                      <Field
+                        as="textarea"
+                        name="whyVolunteer"
+                        rows={3}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-400 text-gray-900 focus:border-emerald-500 focus:outline-none transition-colors resize-none"
+                        placeholder="Tell us about your motivation..."
+                      />
+                      <ErrorMessage
+                        name="whyVolunteer"
+                        component="div"
+                        className="text-red-500 text-sm mt-1"
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
-                    Why do you want to volunteer?
-                  </label>
-                  <textarea
-                    value={formData.whyVolunteer}
-                    onChange={(e) =>
-                      setFormData({ ...formData, whyVolunteer: e.target.value })
-                    }
-                    rows={3}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-emerald-500 focus:outline-none transition-colors resize-none"
-                    placeholder="Tell us about your motivation..."
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-linear-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white px-8 py-4 rounded-full font-black text-lg uppercase tracking-wider transition-all hover:-translate-y-1 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? "Submitting..." : "Submit Application"}
-                </button>
-              </form>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full bg-linear-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white px-8 py-4 rounded-full font-black text-lg uppercase tracking-wider transition-all hover:-translate-y-1 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSubmitting ? "Submitting..." : "Submit Application"}
+                    </button>
+                  </Form>
+                )}
+              </Formik>
             )}
           </motion.div>
         </div>

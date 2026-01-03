@@ -1,4 +1,5 @@
 import { verifyToken } from "@/lib/auth";
+import { MediaService } from "@/lib/mediaService";
 import connectDB from "@/lib/mongodb";
 import Member from "@/models/Member";
 import { parse } from "cookie";
@@ -10,11 +11,10 @@ export async function GET(request: NextRequest) {
     await connectDB();
 
     const { searchParams } = new URL(request.url);
+    const all = searchParams.get("all") === "true"; // Bypass pagination
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const search = searchParams.get("search") || "";
-
-    const skip = (page - 1) * limit;
 
     let query = {};
     if (search) {
@@ -27,8 +27,30 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // If all=true, fetch all members without pagination
+    if (all) {
+      const members = await Member.find(query).sort({ createdAt: 1 }).lean();
+
+      return NextResponse.json(
+        {
+          success: true,
+          members,
+          pagination: {
+            total: members.length,
+            page: 1,
+            limit: members.length,
+            totalPages: 1,
+          },
+        },
+        { status: 200 }
+      );
+    }
+
+    // Regular paginated response
+    const skip = (page - 1) * limit;
+
     const [members, total] = await Promise.all([
-      Member.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Member.find(query).sort({ createdAt: 1 }).skip(skip).limit(limit).lean(),
       Member.countDocuments(query),
     ]);
 
@@ -72,25 +94,48 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
 
-    const body = await request.json();
-    const { name, email, phone, photo, bloodGroup, joiningDate, role, bio } =
-      body;
+    const formData = await request.formData();
 
+    const name = formData.get("name") as string;
+    const email = formData.get("email") as string;
+    const phone = formData.get("phone") as string;
+    const bio = formData.get("bio") as string;
+    const bloodGroup = formData.get("bloodGroup") as string;
+    const joiningDate = formData.get("joiningDate") as string;
+    const role = (formData.get("role") as string) || "Member";
+    const receivedIdCard = formData.get("receivedIdCard") === "true";
+    const receivedTshirt = formData.get("receivedTshirt") === "true";
+    const photoFile = formData.get("photo") as File | null;
     // Validate required fields
-    if (!name || !email || !photo || !bloodGroup) {
+    if (!name || !email || !bloodGroup) {
       return NextResponse.json(
-        { error: "Name, email, photo, and blood group are required" },
+        { error: "Name, email, and blood group are required" },
         { status: 400 }
       );
     }
 
     // Check if email already exists
-    const existingMember = await Member.findOne({ email });
+    const existingMember = await Member.findOne({ email: email.toLowerCase() });
     if (existingMember) {
       return NextResponse.json(
-        { error: "Email already exists" },
-        { status: 400 }
+        { error: "Email already registered" },
+        { status: 409 }
       );
+    }
+
+    // Upload photo to Cloudinary if provided
+    let photoUrl = "";
+    if (photoFile && photoFile.size > 0) {
+      try {
+        const uploadedMedia = await MediaService.uploadFile(photoFile);
+        photoUrl = uploadedMedia.url;
+      } catch (error) {
+        console.error("Photo upload error:", error);
+        return NextResponse.json(
+          { error: "Failed to upload photo" },
+          { status: 500 }
+        );
+      }
     }
 
     // Create new member
@@ -98,17 +143,24 @@ export async function POST(request: NextRequest) {
       name,
       email,
       phone,
-      photo,
+      photo: photoUrl,
       bloodGroup,
       joiningDate: joiningDate || new Date(),
-      role: role || "Member",
+      role,
+      receivedIdCard,
+      receivedTshirt,
+      isActive: true,
       bio,
     });
 
     return NextResponse.json(
       {
-        success: true,
-        member,
+        message: "Member registered successfully",
+        member: {
+          id: member._id,
+          name: member.name,
+          email: member.email,
+        },
       },
       { status: 201 }
     );

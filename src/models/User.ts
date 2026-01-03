@@ -5,7 +5,12 @@ export interface IUser extends Document {
   email: string;
   password: string;
   name: string;
-  role: "admin" | "user";
+  role: "superadmin" | "admin" | "subadmin" | "user";
+  photo?: string;
+  phone?: string;
+  memberId?: mongoose.Types.ObjectId;
+  permissions: string[];
+  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -34,8 +39,28 @@ const userSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ["admin", "user"],
+      enum: ["superadmin", "admin", "subadmin", "user"],
       default: "user",
+    },
+    photo: {
+      type: String,
+      default: "/uploads/default-avatar.png",
+    },
+    phone: {
+      type: String,
+      trim: true,
+    },
+    memberId: {
+      type: Schema.Types.ObjectId,
+      ref: "Member",
+    },
+    permissions: {
+      type: [String],
+      default: [],
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
     },
   },
   {

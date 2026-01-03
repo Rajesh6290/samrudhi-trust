@@ -157,7 +157,7 @@ const LightboxCarousel = ({ item }: { item: GalleryImage }) => {
 
             {/* Dots Indicator */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-              {files.map((file, idx) => (
+              {files?.map((file, idx) => (
                 <button
                   key={file.id}
                   onClick={(e) => {
@@ -365,7 +365,7 @@ const Gallery: React.FC = () => {
         exit={{ opacity: 0, scale: 0.9 }}
         transition={{ duration: 0.4, delay: index * 0.05 }}
         onClick={() => setSelectedImage(item._id)}
-        className="group relative aspect-4/3 rounded-3xl overflow-hidden cursor-pointer bg-slate-200 shadow-md hover:shadow-2xl hover:-translate-y-1 transition-all duration-500"
+        className="group relative  h-104 rounded-3xl overflow-hidden cursor-pointer bg-slate-200 shadow-md hover:shadow-2xl hover:-translate-y-1 transition-all duration-500"
       >
         {/* File Display - Video, Image or PDF */}
         {currentFile && fileType === "video" ? (
@@ -440,11 +440,11 @@ const Gallery: React.FC = () => {
         )}
 
         {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-linear-to-t from-slate-900/90 via-slate-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        <div className="absolute inset-0 bg-linear-to-t from-slate-900/90 via-slate-900/20 to-transparent opacity-100 transition-opacity duration-300" />
 
         {/* Content Overlay */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-          <span className="text-orange-400 text-xs font-bold uppercase tracking-wider block mb-1">
+        <div className="absolute bottom-0 left-0 right-0 p-6 translate-y-0 transition-transform duration-300">
+          <span className="text-orange-500 text-xs font-bold uppercase tracking-wider block mb-1">
             {categoryMap[item.category] || item.category}
           </span>
           <h3 className="text-white text-lg font-bold leading-tight line-clamp-2">
@@ -586,7 +586,7 @@ const Gallery: React.FC = () => {
 
         {/* Gallery Grid */}
         {!loading && displayedImages?.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ">
             <AnimatePresence mode="popLayout">
               {displayedImages.map((image, index) => (
                 <CardCarousel key={image._id} item={image} index={index} />

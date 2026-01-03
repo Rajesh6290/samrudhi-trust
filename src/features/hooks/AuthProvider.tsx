@@ -8,6 +8,9 @@ interface User {
   email: string;
   name: string;
   role: string;
+  photo?: string;
+  phone?: string;
+  permissions?: string[];
 }
 
 interface AuthContextType {
@@ -97,7 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       setUser(null);
       setIsAuthenticated(false);
-      router.push("/admin/login");
+      router.push("/login");
     } catch (error) {
       console.error("Logout error:", error);
     }

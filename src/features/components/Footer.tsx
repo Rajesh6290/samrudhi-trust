@@ -149,19 +149,20 @@ const Footer = () => {
             <h3 className="text-lg font-bold mb-6">Quick Links</h3>
             <ul className="space-y-3">
               {[
-                "About Us",
-                "Our Mission",
-                "Services",
-                "Gallery",
-                "Contact Us",
+                { label: "About Us", href: "#about" },
+                { label: "Our Mission", href: "#mission" },
+                { label: "Services", href: "#services" },
+                { label: "Campaigns", href: "/campaign" },
+                { label: "Gallery", href: "/gallary" },
+                { label: "Contact Us", href: "/contact" },
               ].map((link) => (
-                <li key={link}>
+                <li key={link.label}>
                   <a
-                    href="#"
+                    href={link.href}
                     className="text-gray-400 hover:text-white transition-colors flex items-center space-x-2"
                   >
                     <ArrowRight size={16} />
-                    <span>{link}</span>
+                    <span>{link.label}</span>
                   </a>
                 </li>
               ))}

@@ -10,7 +10,7 @@ export async function GET() {
     await connectDB();
 
     // Get the first (and should be only) settings document
-    let settings = await SiteSettings.findOne();
+    let settings = await SiteSettings.findOne().lean();
 
     // If no settings exist, create default
     if (!settings) {
@@ -19,7 +19,17 @@ export async function GET() {
         email: "contact@samrudhisevatrust.org",
         phone: "+91 123 456 7890",
         address: "Mumbai, Maharashtra, India",
+        officeMapLink: "",
+        officeMapEmbedUrl: "",
       });
+    } else {
+      // Ensure new fields exist in old documents
+      if (settings.officeMapLink === undefined) {
+        settings.officeMapLink = "";
+      }
+      if (settings.officeMapEmbedUrl === undefined) {
+        settings.officeMapEmbedUrl = "";
+      }
     }
 
     return NextResponse.json(
@@ -56,19 +66,9 @@ export async function PUT(request: NextRequest) {
     await connectDB();
 
     const body = await request.json();
-
-    // Update or create settings
-    let settings = await SiteSettings.findOne();
-
-    if (settings) {
-      settings = await SiteSettings.findByIdAndUpdate(settings._id, body, {
-        new: true,
-        runValidators: true,
-      });
-    } else {
-      settings = await SiteSettings.create(body);
-    }
-
+    const settings = await SiteSettings.findByIdAndUpdate(body._id, body, {
+      new: true,
+    });
     return NextResponse.json(
       {
         success: true,

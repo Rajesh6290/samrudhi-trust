@@ -38,6 +38,9 @@ export async function GET(request: NextRequest) {
           email: user.email,
           name: user.name,
           role: user.role,
+          photo: user.photo,
+          phone: user.phone,
+          permissions: user.permissions || [],
         },
       },
       { status: 200 }

@@ -1,333 +1,518 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import DefaultLayouts from "../layouts/DefaultLayouts";
 import BackgroundSlider from "../components/BackgroundSlider";
 import {
   MapPin,
   Phone,
   Mail,
-  Linkedin,
-  Twitter,
   Users,
-  Heart,
-  Target,
-  Award,
+  Crown,
+  Shield,
+  Briefcase,
+  Share2,
+  X,
 } from "lucide-react";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
+import { Dialog, DialogContent, DialogTitle, IconButton } from "@mui/material";
+import useSwr from "../hooks/useSwr";
 
 interface TeamMember {
+  _id: string;
   name: string;
-  role: string;
-  image: string;
-  bio: string;
   email: string;
-  linkedin?: string;
-  twitter?: string;
+  phone?: string;
+  photo: string;
+  bloodGroup: string;
+  role: string;
+  bio?: string;
+  isActive: boolean;
+  joiningDate?: string;
 }
 
-const teamMembers: TeamMember[] = [
-  {
-    name: "Dr. Rajesh Kumar",
-    role: "Founder & President",
-    image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400",
-    bio: "Leading social change with 15+ years of experience in community development and welfare initiatives.",
-    email: "rajesh@samriddhiseva.org",
-    linkedin: "#",
-    twitter: "#",
-  },
-  {
-    name: "Priya Sharma",
-    role: "Vice President & Operations Head",
-    image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400",
-    bio: "Passionate about creating sustainable social impact through strategic planning and execution.",
-    email: "priya@samriddhiseva.org",
-    linkedin: "#",
-  },
-  {
-    name: "Amit Patel",
-    role: "Program Director",
-    image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400",
-    bio: "Dedicated to designing and implementing programs that empower communities and change lives.",
-    email: "amit@samriddhiseva.org",
-    linkedin: "#",
-    twitter: "#",
-  },
-  {
-    name: "Sneha Desai",
-    role: "Volunteer Coordinator",
-    image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400",
-    bio: "Building a strong volunteer community to amplify our impact and reach more people in need.",
-    email: "sneha@samriddhiseva.org",
-    twitter: "#",
-  },
-  {
-    name: "Rahul Mehta",
-    role: "Finance & Compliance Officer",
-    image: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400",
-    bio: "Ensuring transparency and accountability in all financial operations and compliance matters.",
-    email: "rahul@samriddhiseva.org",
-    linkedin: "#",
-  },
-  {
-    name: "Anjali Singh",
-    role: "Communications Manager",
-    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400",
-    bio: "Sharing our stories and amplifying voices of those we serve through strategic communication.",
-    email: "anjali@samriddhiseva.org",
-    linkedin: "#",
-    twitter: "#",
-  },
+interface Settings {
+  address: string;
+  phone: string;
+  email: string;
+  officeMapEmbedUrl?: string;
+  officeMapLink?: string;
+}
+
+const backgroundImages = [
+  "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200",
+  "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1200",
+  "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=1200",
+  "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200",
 ];
 
-const offices = [
-  {
-    city: "Mumbai",
-    type: "Head Office",
-    address:
-      "123 Seva Street, Community Center, Andheri West, Mumbai, Maharashtra 400053",
-    phone: "+91 22 1234 5678",
-    email: "mumbai@samriddhiseva.org",
-    hours: "Mon-Sat: 9:00 AM - 6:00 PM",
-  },
-  {
-    city: "Delhi",
-    type: "Regional Office",
-    address: "456 Service Lane, Karol Bagh, New Delhi, Delhi 110005",
-    phone: "+91 11 2345 6789",
-    email: "delhi@samriddhiseva.org",
-    hours: "Mon-Sat: 9:00 AM - 6:00 PM",
-  },
-  {
-    city: "Bangalore",
-    type: "Regional Office",
-    address: "789 Community Road, Indiranagar, Bangalore, Karnataka 560038",
-    phone: "+91 80 3456 7890",
-    email: "bangalore@samriddhiseva.org",
-    hours: "Mon-Sat: 10:00 AM - 5:00 PM",
-  },
-];
+const getRoleIcon = (role: string) => {
+  if (role.includes("Founder") || role.includes("Chairman")) return Crown;
+  if (role.includes("President") || role.includes("Vice")) return Shield;
+  if (role.includes("Social") || role.includes("Media")) return Share2;
+  if (
+    role.includes("Manager") ||
+    role.includes("Secretary") ||
+    role.includes("Treasurer")
+  )
+    return Briefcase;
+  return Users;
+};
 
-const stats = [
-  { icon: Users, value: "50+", label: "Team Members" },
-  { icon: Heart, value: "500+", label: "Active Volunteers" },
-  { icon: Target, value: "15+", label: "Programs Running" },
-  { icon: Award, value: "10+", label: "Years of Service" },
-];
+const getRolePriority = (role: string) => {
+  if (role.includes("Founder")) return 1;
+  if (role.includes("Chairman")) return 2;
+  if (role.includes("President") && !role.includes("Vice")) return 3;
+  if (role.includes("Vice President")) return 4;
+  if (role.includes("Secretary")) return 5;
+  if (role.includes("Treasurer")) return 6;
+  if (role.includes("Program Head")) return 7;
+  if (role.includes("Manager")) return 8;
+  if (role.includes("Coordinator")) return 9;
+  return 10;
+};
 
-const OfficePage = () => {
-  const backgroundImages = [
-    "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1920&q=80",
-    "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920&q=80",
-    "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1920&q=80",
-  ];
+const maskContact = (contact: string, type: "email" | "phone") => {
+  if (type === "email") {
+    const [local, domain] = contact.split("@");
+    return `${local.slice(0, 2)}${"x".repeat(Math.max(local.length - 2, 4))}@${domain}`;
+  }
+  if (type === "phone" && contact) {
+    return (
+      contact.slice(0, 3) + "x".repeat(contact.length - 6) + contact.slice(-3)
+    );
+  }
+  return contact;
+};
+
+export default function OfficePage() {
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Fetch only leadership members for main display
+  const { data: leadershipData, isLoading: loadingLeadership } =
+    useSwr("members/leadership");
+
+  // Fetch all members for "View All" dialog
+  const { data: allMembersData } = useSwr("members?all=true");
+
+  const { data: settingsData, isLoading: loadingSettings } = useSwr("settings");
+
+  // Leadership team sorted by role priority
+  const members: TeamMember[] = (leadershipData?.data || []).sort(
+    (a: TeamMember, b: TeamMember) =>
+      getRolePriority(a.role) - getRolePriority(b.role)
+  );
+
+  // All members for dialog display
+  const allMembers: TeamMember[] = (allMembersData?.members || []).filter(
+    (m: TeamMember) => m.isActive
+  );
+
+  const settings: Settings = settingsData?.settings || {
+    address: "",
+    phone: "",
+    email: "",
+  };
+
+  const leadershipTeam = members.slice(0, 4); // Top 4 leaders
 
   return (
     <DefaultLayouts>
       {/* Hero Section */}
-      <section className="relative py-24 overflow-hidden">
+      <section className="relative text-white py-24 overflow-hidden">
         <BackgroundSlider
           images={backgroundImages}
           duration={6000}
-          effect="ken-burns"
-          overlayOpacity="bg-emerald-950/90"
+          effect="fade-zoom"
+          overlayOpacity="bg-slate-900/85"
         />
 
         <div className="container mx-auto px-6 relative z-10">
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-6 py-2 rounded-full mb-6">
-              <Users className="w-5 h-5" />
-              <span className="text-sm font-semibold tracking-wider uppercase">
-                Our Team
-              </span>
-            </div>
-
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="max-w-4xl mx-auto text-center"
+          >
             <h1 className="text-5xl md:text-6xl font-black mb-6 tracking-tight">
-              Meet the People Behind{" "}
-              <span className="text-orange-400">The Mission</span>
+              Our <span className="text-orange-400">Office</span>
             </h1>
-
-            <p className="text-xl text-emerald-100 max-w-2xl mx-auto">
-              A dedicated team of professionals and volunteers working together
-              to create positive social change and serve humanity.
+            <p className="text-xl text-slate-100 max-w-2xl mx-auto font-medium">
+              Meet our dedicated team and find our office location. We&apos;re
+              here to serve the community.
             </p>
-          </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-16 bg-gradient-to-br from-emerald-50 via-white to-teal-50">
-        <div className="container mx-auto px-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-            {stats.map((stat, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-2xl p-8 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:-translate-y-2 text-center group"
-              >
-                <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center mb-4 mx-auto group-hover:scale-110 transition-transform">
-                  <stat.icon className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-4xl font-black text-slate-800 mb-2">
-                  {stat.value}
-                </h3>
-                <p className="text-slate-600 font-medium">{stat.label}</p>
+      {/* Leadership Team Section */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
+              Leadership Team
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Our passionate leaders driving positive change in the community
+            </p>
+          </motion.div>
+
+          {loadingLeadership ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="h-96 bg-gray-200 animate-pulse rounded-3xl"
+                />
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+                {leadershipTeam.map((member, index) => {
+                  const RoleIcon = getRoleIcon(member.role);
+                  return (
+                    <motion.div
+                      key={member._id}
+                      initial={{ opacity: 0, y: 30 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: index * 0.1 }}
+                      className="bg-white rounded-3xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+                    >
+                      {/* Photo */}
+                      <div className="relative h-72 bg-linear-to-br from-blue-500 via-purple-500 to-pink-500">
+                        <Image
+                          src={member.photo}
+                          alt={member.name}
+                          fill
+                          className="object-cover"
+                        />
+                        <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent" />
+                        <div className="absolute bottom-4 left-4 right-4">
+                          <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full inline-flex items-center gap-2 text-white text-sm font-semibold mb-2">
+                            <RoleIcon size={14} />
+                            {member.role}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <div className="p-6">
+                        <h3 className="text-xl font-bold text-gray-900 mb-3">
+                          {member.name}
+                        </h3>
+
+                        {/* Contact Info */}
+                        <div className="space-y-2 mb-4">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Mail size={14} className="text-orange-500" />
+                            <span className="truncate">{member.email}</span>
+                          </div>
+                          {member.phone && (
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Phone size={14} className="text-orange-500" />
+                              <span>{member.phone}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Additional Info */}
+                        <div className="flex items-center gap-3 mb-3 text-xs">
+                          {member.joiningDate && (
+                            <span className="px-3 py-1 bg-orange-50 text-orange-600 rounded-full font-semibold">
+                              Since {new Date(member.joiningDate).getFullYear()}
+                            </span>
+                          )}
+                        </div>
+
+                        {member.bio && (
+                          <p className="text-gray-600 text-sm line-clamp-2 border-t pt-3 mb-4">
+                            {member.bio}
+                          </p>
+                        )}
+
+                        {/* Get Connect Button */}
+                        <a
+                          href={`mailto:${member.email}?subject=Inquiry from Samrudhi Trust Website&body=Hello ${member.name},%0D%0A%0D%0AI would like to connect with you regarding Samrudhi Trust.%0D%0A%0D%0AThank you.`}
+                          className="block w-full text-center bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-300 shadow-md hover:shadow-lg"
+                        >
+                          Get Connect
+                        </a>
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+
+              {/* View All Members Button */}
+              {allMembers.length > 4 && (
+                <div className="text-center">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setDialogOpen(true)}
+                    className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-full font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center gap-3 mx-auto"
+                  >
+                    <Users size={24} />
+                    View All Members ({allMembers.length})
+                  </motion.button>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </section>
 
-      {/* Leadership Team */}
+      {/* Office Location Section */}
       <section className="py-20 bg-white">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-black text-slate-800 mb-4">
-              Our Leadership Team
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
+              Visit Our Office
             </h2>
-            <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-              Meet the passionate individuals driving our mission forward
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              We&apos;d love to meet you. Drop by our office or get in touch.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-            {teamMembers.map((member, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden group hover:-translate-y-2"
-                style={{
-                  animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both`,
-                }}
+          {loadingSettings ? (
+            <div className="h-96 bg-gray-200 animate-pulse rounded-3xl" />
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Address Card */}
+              <motion.div
+                initial={{ opacity: 0, x: -30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                className="bg-linear-to-br from-blue-600 to-purple-600 rounded-3xl shadow-2xl p-8 text-white"
               >
-                {/* Image */}
-                <div className="relative h-80 overflow-hidden bg-slate-200">
-                  <Image
-                    src={member.image}
-                    alt={member.name}
-                    fill
-                    className="object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
+                <h3 className="text-3xl font-bold mb-8 flex items-center gap-3">
+                  <MapPin size={32} />
+                  Contact Information
+                </h3>
 
-                {/* Content */}
-                <div className="p-6">
-                  <h3 className="text-2xl font-black text-slate-800 mb-1">
-                    {member.name}
-                  </h3>
-                  <p className="text-emerald-600 font-bold mb-3">
-                    {member.role}
-                  </p>
-                  <p className="text-slate-600 text-sm mb-4 leading-relaxed">
-                    {member.bio}
-                  </p>
-
-                  {/* Contact Info */}
-                  <div className="space-y-2 mb-4">
-                    <a
-                      href={`mailto:${member.email}`}
-                      className="flex items-center gap-2 text-sm text-slate-600 hover:text-emerald-600 transition-colors"
-                    >
-                      <Mail className="w-4 h-4" />
-                      {member.email}
-                    </a>
-                  </div>
-
-                  {/* Social Links */}
-                  <div className="flex gap-3">
-                    {member.linkedin && (
-                      <a
-                        href={member.linkedin}
-                        className="w-10 h-10 bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center justify-center transition-all hover:scale-110"
-                      >
-                        <Linkedin className="w-5 h-5 text-white" />
-                      </a>
-                    )}
-                    {member.twitter && (
-                      <a
-                        href={member.twitter}
-                        className="w-10 h-10 bg-sky-500 hover:bg-sky-600 rounded-lg flex items-center justify-center transition-all hover:scale-110"
-                      >
-                        <Twitter className="w-5 h-5 text-white" />
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Office Locations */}
-      <section className="py-20 bg-gradient-to-br from-teal-50 via-white to-emerald-50">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-black text-slate-800 mb-4">
-              Our Offices
-            </h2>
-            <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-              Visit us at any of our locations across India
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-            {offices.map((office, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-3xl shadow-xl p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2"
-              >
-                <div className="flex items-start justify-between mb-6">
+                <div className="space-y-6">
                   <div>
-                    <h3 className="text-2xl font-black text-slate-800 mb-1">
-                      {office.city}
-                    </h3>
-                    <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold uppercase">
-                      {office.type}
-                    </span>
-                  </div>
-                  <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center">
-                    <MapPin className="w-6 h-6 text-white" />
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <MapPin className="w-5 h-5 text-slate-400 flex-shrink-0 mt-1" />
-                    <p className="text-slate-600 text-sm">{office.address}</p>
+                    <div className="flex items-start gap-4">
+                      <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl">
+                        <MapPin size={24} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-blue-100 mb-1">
+                          Address
+                        </p>
+                        <p className="text-lg font-medium">
+                          {settings.address || "Not available"}
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <Phone className="w-5 h-5 text-slate-400" />
-                    <a
-                      href={`tel:${office.phone}`}
-                      className="text-slate-600 hover:text-emerald-600 transition-colors text-sm font-medium"
-                    >
-                      {office.phone}
-                    </a>
+                  <div>
+                    <div className="flex items-start gap-4">
+                      <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl">
+                        <Phone size={24} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-blue-100 mb-1">
+                          Phone
+                        </p>
+                        <p className="text-lg font-medium">
+                          {settings.phone || "Not available"}
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <Mail className="w-5 h-5 text-slate-400" />
-                    <a
-                      href={`mailto:${office.email}`}
-                      className="text-slate-600 hover:text-emerald-600 transition-colors text-sm font-medium"
-                    >
-                      {office.email}
-                    </a>
+                  <div>
+                    <div className="flex items-start gap-4">
+                      <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl">
+                        <Mail size={24} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-blue-100 mb-1">
+                          Email
+                        </p>
+                        <p className="text-lg font-medium">
+                          {settings.email || "Not available"}
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="pt-4 border-t border-slate-200">
-                    <p className="text-sm font-bold text-slate-700">
-                      {office.hours}
+                  <div className="pt-6 border-t border-white/20">
+                    <p className="text-blue-100 text-sm font-medium mb-2">
+                      Office Hours
                     </p>
+                    <p className="text-lg font-semibold">Monday - Saturday</p>
+                    <p className="text-lg font-semibold">9:00 AM - 6:00 PM</p>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              </motion.div>
+
+              {/* Google Map */}
+              <motion.div
+                initial={{ opacity: 0, x: 30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                className="bg-gray-100 rounded-3xl shadow-2xl overflow-hidden"
+              >
+                {settings.officeMapEmbedUrl ? (
+                  <iframe
+                    src={settings.officeMapEmbedUrl}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0, minHeight: "500px" }}
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    title="Office Location Map"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full min-h-125 text-gray-500">
+                    <div className="text-center">
+                      <MapPin
+                        size={64}
+                        className="mx-auto mb-4 text-gray-400"
+                      />
+                      <p className="text-lg font-medium">Map not available</p>
+                      <p className="text-sm">
+                        Please contact us for directions
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </div>
+          )}
         </div>
       </section>
+
+      {/* All Members Dialog */}
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 4,
+            maxHeight: "90vh",
+          },
+        }}
+      >
+        <DialogTitle sx={{ m: 0, p: 3, pr: 6 }}>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                All Team Members
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Meet our complete team of {allMembers.length} members
+              </p>
+            </div>
+            <IconButton
+              aria-label="close"
+              onClick={() => setDialogOpen(false)}
+              sx={{
+                position: "absolute",
+                right: 16,
+                top: 16,
+              }}
+            >
+              <X />
+            </IconButton>
+          </div>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 3 }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <AnimatePresence>
+              {allMembers.map((member, index) => {
+                const RoleIcon = getRoleIcon(member.role);
+                return (
+                  <motion.div
+                    key={member._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="bg-linear-to-br from-gray-50 to-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-shadow duration-300"
+                  >
+                    <div className="flex gap-4">
+                      {/* Photo */}
+                      <div className="relative w-24 h-24 rounded-2xl overflow-hidden shrink-0 bg-linear-to-br from-blue-500 to-purple-500">
+                        <Image
+                          src={member.photo}
+                          alt={member.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start gap-2 mb-2">
+                          <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0">
+                            <RoleIcon size={12} />
+                            {member.role}
+                          </div>
+                        </div>
+
+                        <h3 className="text-lg font-bold text-gray-900 mb-1 truncate">
+                          {member.name}
+                        </h3>
+
+                        {member.bio && (
+                          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                            {member.bio}
+                          </p>
+                        )}
+
+                        <div className="space-y-1 text-xs text-gray-600">
+                          <div className="flex items-center gap-2">
+                            <Mail
+                              size={14}
+                              className="text-gray-400 shrink-0"
+                            />
+                            <span className="truncate">
+                              {maskContact(member.email, "email")}
+                            </span>
+                          </div>
+                          {member.phone && (
+                            <div className="flex items-center gap-2">
+                              <Phone
+                                size={14}
+                                className="text-gray-400 shrink-0"
+                              />
+                              <span>{maskContact(member.phone, "phone")}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-red-600">
+                              Blood Group: {member.bloodGroup}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DefaultLayouts>
   );
-};
-
-export default OfficePage;
+}

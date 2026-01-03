@@ -46,10 +46,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user is admin
-    if (user.role !== "admin") {
+    // Check if user is admin, subadmin, or superadmin
+    if (!["superadmin", "admin", "subadmin"].includes(user.role)) {
       return NextResponse.json(
         { error: "Unauthorized: Admin access only" },
+        { status: 403 }
+      );
+    }
+
+    // Check if user is active
+    if (!user.isActive) {
+      return NextResponse.json(
+        { error: "Account is inactive. Please contact administrator." },
         { status: 403 }
       );
     }
@@ -78,6 +86,9 @@ export async function POST(request: NextRequest) {
           email: user.email,
           name: user.name,
           role: user.role,
+          photo: user.photo,
+          phone: user.phone,
+          permissions: user.permissions || [],
         },
       },
       { status: 200 }

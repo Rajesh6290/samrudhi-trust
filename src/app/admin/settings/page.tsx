@@ -33,6 +33,8 @@ interface Settings {
   organizationName: string;
   tagline?: string;
   aboutUs?: string;
+  officeMapLink?: string;
+  officeMapEmbedUrl?: string;
 }
 
 const SettingsPage: React.FC = () => {
@@ -44,6 +46,8 @@ const SettingsPage: React.FC = () => {
     email: "",
     phone: "",
     address: "",
+    officeMapLink: "",
+    officeMapEmbedUrl: "",
   });
 
   useEffect(() => {
@@ -75,7 +79,13 @@ const SettingsPage: React.FC = () => {
       });
 
       if (response.ok) {
+        const data = await response.json();
+        setSettings(data.settings); // Update local state with saved data
         alert("Settings saved successfully!");
+      } else {
+        const error = await response.json();
+        console.error("Save error:", error);
+        alert("Failed to save settings: " + (error.error || "Unknown error"));
       }
     } catch (error) {
       console.error("Failed to save settings:", error);
@@ -264,6 +274,42 @@ const SettingsPage: React.FC = () => {
               rows={2}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all font-medium resize-none"
             />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-slate-900 font-bold text-sm uppercase tracking-wider mb-2">
+              Office Map Link (Google Maps Link)
+            </label>
+            <input
+              type="url"
+              value={settings.officeMapLink || ""}
+              onChange={(e) =>
+                setSettings({ ...settings, officeMapLink: e.target.value })
+              }
+              placeholder="https://maps.google.com/..."
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all font-medium"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Regular Google Maps link for opening in Maps app
+            </p>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-slate-900 font-bold text-sm uppercase tracking-wider mb-2">
+              Office Map Embed URL (For iframe)
+            </label>
+            <input
+              type="url"
+              value={settings.officeMapEmbedUrl || ""}
+              onChange={(e) =>
+                setSettings({ ...settings, officeMapEmbedUrl: e.target.value })
+              }
+              placeholder="https://www.google.com/maps/embed?pb=..."
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all font-medium"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Go to Google Maps → Share → Embed a map → Copy the iframe src URL
+            </p>
           </div>
         </div>
       </motion.div>

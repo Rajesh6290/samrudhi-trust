@@ -19,6 +19,9 @@ import {
   Users,
   X,
   UserPlus,
+  Megaphone,
+  Shield,
+  UserCog,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
@@ -26,18 +29,99 @@ import Swal from "sweetalert2";
 
 const cn = (...classes: string[]) => classes.filter(Boolean).join(" ");
 const MENU_ITEMS = [
-  { icon: BarChart3, label: "Dashboard", href: "/admin/dashboard" },
-  { icon: Users, label: "Members", href: "/admin/members" },
-  { icon: Briefcase, label: "Services", href: "/admin/services" },
-  { icon: UserPlus, label: "Volunteers", href: "/admin/volunteers" },
-  { icon: LineChart, label: "Statistics", href: "/admin/stats" },
-  { icon: Star, label: "Testimonials", href: "/admin/testimonials" },
-  { icon: Image, label: "Gallery", href: "/admin/gallery" },
-  { icon: Award, label: "Certificates", href: "/admin/certificates" },
-  { icon: FileText, label: "Content", href: "/admin/content" },
-  { icon: MessageSquare, label: "Feedback", href: "/admin/feedback" },
-  { icon: Mail, label: "Contact", href: "/admin/contact" },
-  { icon: Settings, label: "Settings", href: "/admin/settings" },
+  {
+    icon: BarChart3,
+    label: "Dashboard",
+    href: "/admin/dashboard",
+    permission: "dashboard",
+  },
+  {
+    icon: Users,
+    label: "Members",
+    href: "/admin/members",
+    permission: "members",
+  },
+  {
+    icon: Briefcase,
+    label: "Services",
+    href: "/admin/services",
+    permission: "services",
+  },
+  {
+    icon: Megaphone,
+    label: "Campaigns",
+    href: "/admin/campaigns",
+    permission: "campaigns",
+  },
+  {
+    icon: UserPlus,
+    label: "Volunteers",
+    href: "/admin/volunteers",
+    permission: "volunteers",
+  },
+  { icon: FileText, label: "Blogs", href: "/admin/blogs", permission: "blogs" },
+  {
+    icon: LineChart,
+    label: "Statistics",
+    href: "/admin/stats",
+    permission: "stats",
+  },
+  {
+    icon: Star,
+    label: "Testimonials",
+    href: "/admin/testimonials",
+    permission: "testimonials",
+  },
+  {
+    icon: Image,
+    label: "Gallery",
+    href: "/admin/gallery",
+    permission: "gallery",
+  },
+  {
+    icon: Award,
+    label: "Certificates",
+    href: "/admin/certificates",
+    permission: "certificates",
+  },
+  {
+    icon: Globe,
+    label: "Content",
+    href: "/admin/content",
+    permission: "content",
+  },
+  {
+    icon: MessageSquare,
+    label: "Feedback",
+    href: "/admin/feedback",
+    permission: "feedback",
+  },
+  {
+    icon: Mail,
+    label: "Contact",
+    href: "/admin/contact",
+    permission: "contact",
+  },
+  {
+    icon: Shield,
+    label: "Admins",
+    href: "/admin/admins",
+    permission: "admins",
+    roleRequired: ["superadmin", "admin"],
+  },
+  {
+    icon: UserCog,
+    label: "Profile",
+    href: "/admin/profile",
+    permission: "profile",
+    alwaysShow: true,
+  },
+  {
+    icon: Settings,
+    label: "Settings",
+    href: "/admin/settings",
+    permission: "settings",
+  },
 ] as const;
 
 // ==================== SIDEBAR COMPONENT ====================
@@ -46,10 +130,14 @@ const Sidebar = memo(
     isOpen,
     onClose,
     onNavigate,
+    userPermissions,
+    userRole,
   }: {
     isOpen: boolean;
     onClose: () => void;
     onNavigate: (href: string) => void;
+    userPermissions: string[];
+    userRole: string;
   }) => {
     const metaPath = usePathname();
     const handleNavClick = useCallback(
@@ -61,6 +149,17 @@ const Sidebar = memo(
       },
       [onNavigate, onClose]
     );
+
+    // Filter menu items based on permissions and role
+    const filteredMenuItems = useMemo(() => {
+      return MENU_ITEMS.filter((item) => {
+        // Superadmin sees everything
+        if (userRole === "superadmin") return true;
+
+        // Check if user has permission for this item
+        return userPermissions.includes(item.permission);
+      });
+    }, [userPermissions, userRole]);
 
     return (
       <>
@@ -104,8 +203,8 @@ const Sidebar = memo(
           </div>
 
           {/* Menu Items */}
-          <nav className="mt-4 lg:mt-8 px-3 lg:px-4 space-y-1 lg:space-y-2 overflow-y-auto h-[calc(100vh-64px)] lg:h-[calc(100vh-80px)] scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
-            {MENU_ITEMS.map((item) => {
+          <nav className="mt-4 lg:mt-8 px-3 lg:px-4 pb-8 space-y-1 lg:space-y-2 overflow-y-auto h-[calc(100vh-64px)] lg:h-[calc(100vh-80px)]">
+            {filteredMenuItems.map((item) => {
               const isActive = metaPath === item.href;
               return (
                 <motion.button
@@ -263,7 +362,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push("/admin/login");
+      router.push("/login");
     }
   }, [isAuthenticated, isLoading, router]);
 
@@ -346,6 +445,8 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
         isOpen={isSidebarOpen}
         onClose={handleCloseSidebar}
         onNavigate={handleNavigate}
+        userPermissions={user?.permissions || []}
+        userRole={user?.role || "user"}
       />
 
       {/* Main Content */}

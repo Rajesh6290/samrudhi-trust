@@ -28,6 +28,10 @@ export interface ISiteSettings extends Document {
   tagline?: string;
   aboutUs?: string;
 
+  // Office Location
+  officeMapLink?: string;
+  officeMapEmbedUrl?: string;
+
   updatedAt: Date;
 }
 
@@ -75,6 +79,10 @@ const siteSettingsSchema = new Schema<ISiteSettings>(
     },
     tagline: { type: String, trim: true },
     aboutUs: { type: String, trim: true },
+
+    // Office Location
+    officeMapLink: { type: String, trim: true },
+    officeMapEmbedUrl: { type: String, trim: true },
   },
   {
     timestamps: true,

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const MONGODB_URI =
+export const MONGODB_URI =
   "mongodb+srv://samriddhisevatrust2022_db_user:BTZJThJgo0mBRW7H@cluster0.uzcxulq.mongodb.net/qa?retryWrites=true&w=majority";
 
 if (!MONGODB_URI) {

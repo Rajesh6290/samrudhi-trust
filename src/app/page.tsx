@@ -53,6 +53,10 @@ const VolunteerSection = dynamic(
   }
 );
 
+const Campaigns = dynamic(() => import("@/features/components/Campaigns"), {
+  loading: () => <div className="h-96 bg-white animate-pulse" />,
+});
+
 export default function HomePage() {
   return (
     <DefaultLayouts>
@@ -75,6 +79,10 @@ export default function HomePage() {
 
       <Suspense fallback={<div className="h-96 bg-slate-50 animate-pulse" />}>
         <RealTimeImpact />
+      </Suspense>
+
+      <Suspense fallback={<div className="h-96 bg-white animate-pulse" />}>
+        <Campaigns />
       </Suspense>
 
       <Suspense fallback={<div className="h-96 bg-white animate-pulse" />}>

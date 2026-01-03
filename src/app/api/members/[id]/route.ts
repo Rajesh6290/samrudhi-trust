@@ -1,4 +1,5 @@
 import { verifyToken } from "@/lib/auth";
+import { MediaService } from "@/lib/mediaService";
 import connectDB from "@/lib/mongodb";
 import Member from "@/models/Member";
 import { parse } from "cookie";
@@ -57,23 +58,24 @@ export async function PUT(
     await connectDB();
     const { id } = await params;
 
-    const body = await request.json();
-    const {
-      name,
-      email,
-      phone,
-      photo,
-      bloodGroup,
-      joiningDate,
-      role,
-      bio,
-      isActive,
-    } = body;
+    const formData = await request.formData();
+
+    const name = formData.get("name") as string;
+    const email = formData.get("email") as string;
+    const phone = formData.get("phone") as string;
+    const bio = formData.get("bio") as string;
+    const bloodGroup = formData.get("bloodGroup") as string;
+    const joiningDate = formData.get("joiningDate") as string;
+    const role = (formData.get("role") as string) || "Member";
+    const receivedIdCard = formData.get("receivedIdCard") === "yes";
+    const receivedTshirt = formData.get("receivedTshirt") === "yes";
+    const isActive = formData.get("isActive") === "yes";
+    const photoFile = formData.get("photo") as File | null;
 
     // Check if email is being changed and already exists
     if (email) {
       const existingMember = await Member.findOne({
-        email,
+        email: email.toLowerCase(),
         _id: { $ne: id },
       });
       if (existingMember) {
@@ -84,29 +86,48 @@ export async function PUT(
       }
     }
 
-    const member = await Member.findByIdAndUpdate(
-      id,
-      {
-        name,
-        email,
-        phone,
-        photo,
-        bloodGroup,
-        joiningDate,
-        role,
-        bio,
-        isActive,
-      },
-      { new: true, runValidators: true }
-    );
-
-    if (!member) {
+    // Find existing member
+    const existingMemberData = await Member.findById(id);
+    if (!existingMemberData) {
       return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
+
+    // Handle photo upload if provided
+    let photoUrl = existingMemberData.photo;
+    if (photoFile && photoFile.size > 0) {
+      const uploadedPhotoUrl = await MediaService.uploadFile(photoFile);
+      if (uploadedPhotoUrl) {
+        photoUrl = uploadedPhotoUrl?.url;
+        // Optionally delete old photo
+        if (existingMemberData.photo) {
+          await MediaService.deleteFile(existingMemberData.photo);
+        }
+      }
+    }
+
+    const updateData = {
+      name,
+      email: email.toLowerCase(),
+      phone,
+      photo: photoUrl,
+      bloodGroup,
+      joiningDate,
+      role,
+      bio,
+      receivedIdCard,
+      receivedTshirt,
+      isActive,
+    };
+
+    const member = await Member.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    });
 
     return NextResponse.json(
       {
         success: true,
+        message: "Member updated successfully",
         member,
       },
       { status: 200 }
