@@ -1,11 +1,13 @@
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-jwt-key";
+const JWT_SECRET =
+  process.env.NEXT_PUBLIC_JWT_SECRET || "your-super-secret-jwt-key";
 
 export interface JWTPayload {
   userId: string;
   email: string;
   role: string;
+  permissions?: string[];
 }
 
 export const generateToken = (payload: JWTPayload): string => {

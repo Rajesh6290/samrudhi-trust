@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/features/hooks/useAuth";
+import PermissionErrorHandler from "@/features/components/admin/PermissionErrorHandler";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Award,
@@ -22,6 +23,9 @@ import {
   Megaphone,
   Shield,
   UserCog,
+  CreditCard,
+  Webhook,
+  QrCode,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
@@ -101,6 +105,18 @@ const MENU_ITEMS = [
     label: "Contact",
     href: "/admin/contact",
     permission: "contact",
+  },
+  {
+    icon: CreditCard,
+    label: "Payments",
+    href: "/admin/payments",
+    permission: "payments",
+  },
+  {
+    icon: Webhook,
+    label: "Webhooks",
+    href: "/admin/webhooks",
+    permission: "webhooks",
   },
   {
     icon: Shield,
@@ -239,10 +255,12 @@ const Header = memo(
   ({
     onToggleSidebar,
     onLogout,
+    onOpenQRScanner,
     user,
   }: {
     onToggleSidebar: () => void;
     onLogout: () => void;
+    onOpenQRScanner: () => void;
     user: { name?: string; email?: string } | null;
   }) => {
     const getUserInitials = useCallback((name: string) => {
@@ -277,6 +295,16 @@ const Header = memo(
             </h2>
           </div>
         </div>
+        {/* QR Scanner Button */}
+        <button
+          onClick={onOpenQRScanner}
+          className="flex items-center cursor-pointer gap-2 px-3 lg:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-all font-semibold text-xs lg:text-sm hover:scale-105 active:scale-95"
+          aria-label="Scan QR Code"
+          title="Quick QR Scanner for Payouts"
+        >
+          <QrCode className="w-4 h-4" />
+          <span className="hidden sm:inline">QR Scan</span>
+        </button>
 
         <div className="flex items-center gap-2 lg:gap-4">
           <button
@@ -342,6 +370,7 @@ LoadingScreen.displayName = "LoadingScreen";
 // ==================== MAIN ADMIN LAYOUT COMPONENT ====================
 const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);
   const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
   // Handle responsive sidebar state
@@ -410,7 +439,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
             timer: 1500,
             showConfirmButton: false,
           });
-          router.push("/admin/login");
+          router.push("/login");
         } else {
           Swal.fire({
             title: "Error!",
@@ -427,6 +456,20 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
       }
     }
   }, [router]);
+
+  const handleOpenQRScanner = useCallback(() => {
+    setIsQRScannerOpen(true);
+  }, []);
+
+  const handleQRScan = useCallback(
+    (qrData: string) => {
+      setIsQRScannerOpen(false);
+      // Redirect to payments page with QR data in URL
+      router.push(`/admin/payments?qrScan=${encodeURIComponent(qrData)}`);
+    },
+    [router]
+  );
+
   const mainMargin = useMemo(() => {
     if (typeof window === "undefined") return 0;
     return isSidebarOpen && window.innerWidth >= 1024 ? 280 : 0;
@@ -439,36 +482,75 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-slate-50">
-      {/* Sidebar */}
-      <Sidebar
-        isOpen={isSidebarOpen}
-        onClose={handleCloseSidebar}
-        onNavigate={handleNavigate}
-        userPermissions={user?.permissions || []}
-        userRole={user?.role || "user"}
-      />
-
-      {/* Main Content */}
-      <motion.main
-        animate={{
-          marginLeft: mainMargin,
-        }}
-        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        className="min-h-screen"
-      >
-        {/* Header */}
-        <Header
-          onToggleSidebar={handleToggleSidebar}
-          onLogout={handleLogout}
-          user={user}
+    <PermissionErrorHandler>
+      <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-slate-50">
+        {/* Sidebar */}
+        <Sidebar
+          isOpen={isSidebarOpen}
+          onClose={handleCloseSidebar}
+          onNavigate={handleNavigate}
+          userPermissions={user?.permissions || []}
+          userRole={user?.role || "user"}
         />
 
-        {/* Dashboard Content */}
-        <div className="p-4 lg:p-8">{children}</div>
-      </motion.main>
-    </div>
+        {/* Main Content */}
+        <motion.main
+          style={{ marginLeft: mainMargin }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="transition-all duration-300"
+        >
+          {/* Header */}
+          <Header
+            onToggleSidebar={handleToggleSidebar}
+            onOpenQRScanner={handleOpenQRScanner}
+            onLogout={handleLogout}
+            user={user}
+          />
+
+          {/* Dashboard Content */}
+          <div className="p-4 lg:p-8">{children}</div>
+        </motion.main>
+
+        {/* Global QR Scanner */}
+        {isQRScannerOpen && (
+          <QRScannerModal
+            isOpen={isQRScannerOpen}
+            onClose={() => setIsQRScannerOpen(false)}
+            onScan={handleQRScan}
+          />
+        )}
+      </div>
+    </PermissionErrorHandler>
   );
 };
+
+// Simple QR Scanner Modal wrapper
+function QRScannerModal({
+  isOpen,
+  onClose,
+  onScan,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onScan: (data: string) => void;
+}) {
+  const [QRScanner, setQRScanner] = useState<React.ComponentType<{
+    isOpen: boolean;
+    onClose: () => void;
+    onScan: (data: string) => void;
+  }> | null>(null);
+
+  useEffect(() => {
+    // Dynamically import QRScanner to avoid SSR issues
+    import("@/features/components/admin/QRScanner").then((mod) => {
+      setQRScanner(() => mod.default);
+    });
+  }, []);
+
+  if (!QRScanner) return null;
+
+  return <QRScanner isOpen={isOpen} onClose={onClose} onScan={onScan} />;
+}
 
 export default AdminLayout;

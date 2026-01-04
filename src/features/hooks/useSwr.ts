@@ -27,7 +27,7 @@ const useSwr = (path: string | null, options?: SWRConfiguration) => {
   };
 
   const { data, error, mutate, isValidating, isLoading } = useSWR(
-    `/api/${path}`,
+    path ? `/api/${path}` : null,
     fetcher,
     {
       ...options,

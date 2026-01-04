@@ -62,11 +62,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate JWT token
+    // Generate JWT token with permissions
     const token = generateToken({
       userId: user._id.toString(),
       email: user.email,
       role: user.role,
+      permissions: user.permissions || [],
     });
 
     // Set cookie
