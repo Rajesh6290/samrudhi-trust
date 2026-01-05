@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import Razorpay from "razorpay";
 
-// Initialize Razorpay instance
-const razorpay = new Razorpay({
-  key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
+// Force dynamic rendering for this route
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
+    // Initialize Razorpay instance inside the handler to avoid build-time errors
+    const razorpay = new Razorpay({
+      key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
+      key_secret: process.env.NEXT_PUBLIC_RAZORPAY_KEY_SECRET!,
+    });
+
     const body = await request.json();
     const { amount, notes } = body;
 

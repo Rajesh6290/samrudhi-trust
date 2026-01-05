@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/features/hooks/AuthProvider";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
     title: "Samriddhi Seva Trust - Serving Humanity, One Meal at a Time",
     description:
       "Join us in making a difference through food rescue, blood donation drives, and child welfare programs.",
-    url: "https://samrudhisevatrust.org",
+    url: "https://samriddhisevatrust.org",
     siteName: "Samriddhi Seva Trust",
     images: [
       {
@@ -77,7 +78,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="canonical" href="https://samrudhisevatrust.org" />
+        <link rel="canonical" href="https://samriddhisevatrust.org" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -86,8 +87,8 @@ export default function RootLayout({
               "@type": "NGO",
               name: "Samriddhi Seva Trust",
               alternateName: "Samriddhi Trust",
-              url: "https://samrudhisevatrust.org",
-              logo: "https://samrudhisevatrust.org/logo.svg",
+              url: "https://samriddhisevatrust.org",
+              logo: "https://samriddhisevatrust.org/logo.svg",
               description:
                 "A non-profit organization dedicated to food rescue, blood donation drives, and child welfare programs.",
               foundingDate: "2020",
@@ -112,6 +113,7 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.variable} antialiased`}>
+        <SpeedInsights />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
