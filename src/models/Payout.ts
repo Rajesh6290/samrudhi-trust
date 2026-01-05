@@ -118,9 +118,9 @@ const PayoutSchema = new Schema<IPayout>(
 );
 
 // Indexes for better query performance
+// Note: payoutId index is automatically created by unique: true
 PayoutSchema.index({ recipientName: 1, createdAt: -1 });
 PayoutSchema.index({ status: 1, createdAt: -1 });
-PayoutSchema.index({ payoutId: 1 });
 PayoutSchema.index({ qrData: 1 });
 PayoutSchema.index({ category: 1, createdAt: -1 });
 

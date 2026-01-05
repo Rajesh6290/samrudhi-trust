@@ -107,7 +107,7 @@ const blogSchema = new Schema<IBlog>(
 );
 
 // Create indexes for better query performance
-blogSchema.index({ slug: 1 });
+// Note: slug index is automatically created by unique: true
 blogSchema.index({ category: 1 });
 blogSchema.index({ tags: 1 });
 blogSchema.index({ status: 1, isActive: 1 });
