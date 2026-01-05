@@ -1,7 +1,6 @@
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET =
-  process.env.NEXT_PUBLIC_JWT_SECRET || "your-super-secret-jwt-key";
+const JWT_SECRET = process.env.NEXT_PUBLIC_JWT_SECRET as string;
 
 export interface JWTPayload {
   userId: string;

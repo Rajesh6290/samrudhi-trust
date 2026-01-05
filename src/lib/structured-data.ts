@@ -4,8 +4,8 @@ export const structuredData = {
     "@type": "NGO",
     name: "samriddhi Seva Trust",
     alternateName: "samriddhi Trust",
-    url: "https://samrudhisevatrust.org",
-    logo: "https://samrudhisevatrust.org/logo.png",
+    url: "https://samriddhisevatrust.org",
+    logo: "https://samriddhisevatrust.org/logo.png",
     description:
       "A non-profit organization dedicated to food rescue, blood donation drives, and child welfare programs.",
     foundingDate: "2020",
@@ -20,9 +20,9 @@ export const structuredData = {
     ],
     contactPoint: {
       "@type": "ContactPoint",
-      telephone: "+91-1234567890",
+      telephone: "+91 9776391244",
       contactType: "Customer Service",
-      email: "info@samrudhisevatrust.org",
+      email: "samriddhisevatrust2022@gmail.com",
       availableLanguage: ["English", "Hindi"],
     },
   },
@@ -56,7 +56,7 @@ export const structuredData = {
     organizer: {
       "@type": "Organization",
       name: "samriddhi Seva Trust",
-      url: "https://samrudhisevatrust.org",
+      url: "https://samriddhisevatrust.org",
     },
   }),
 };

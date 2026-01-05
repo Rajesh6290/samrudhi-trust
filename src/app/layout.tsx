@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/features/hooks/AuthProvider";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { ToastContainer } from "react-toastify";
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
@@ -113,6 +114,18 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.variable} antialiased`}>
+        <ToastContainer
+          position="top-right"
+          autoClose={2000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+        />
         <SpeedInsights />
         <AuthProvider>{children}</AuthProvider>
       </body>

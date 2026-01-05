@@ -17,7 +17,30 @@ export interface IPayment extends Document {
   amount: number;
   month?: Date; // Only for member payments
   paymentDate: Date;
-  status: "pending" | "completed" | "failed";
+  status: "pending" | "completed" | "failed" | "refunded" | "disputed";
+
+  // Payment reconciliation and tracking
+  reconciliationStatus:
+    | "not_required"
+    | "pending"
+    | "reconciled"
+    | "discrepancy";
+  lastReconciliationDate?: Date;
+  reconciliationNotes?: string;
+
+  // Failure handling
+  failureReason?: string;
+  failureCode?: string;
+  retryCount: number;
+  maxRetries: number;
+
+  // Refund tracking
+  refundStatus?: "not_initiated" | "pending" | "processed" | "failed";
+  refundAmount?: number;
+  refundId?: string;
+  refundReason?: string;
+  refundDate?: Date;
+  refundProcessedBy?: mongoose.Types.ObjectId; // Admin user who processed refund
 
   // 80G Certificate details
   needs80G: boolean;
@@ -30,10 +53,18 @@ export interface IPayment extends Document {
   razorpayPaymentId?: string;
   razorpaySignature?: string;
   paymentMethod?: string;
+  razorpayResponse?: Record<string, any>; // Store complete Razorpay response for debugging
 
   // Invoice details
   invoiceNumber?: string;
   invoiceType?: "standard" | "80g";
+  invoiceSent: boolean;
+  invoiceSentDate?: Date;
+
+  // Webhook tracking
+  webhookReceived: boolean;
+  webhookReceivedAt?: Date;
+  webhookEventId?: string;
 
   notes?: string;
   createdAt: Date;
@@ -88,9 +119,55 @@ const PaymentSchema: Schema = new Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "completed", "failed"],
+      enum: ["pending", "completed", "failed", "refunded", "disputed"],
       default: "pending",
       index: true,
+    },
+    reconciliationStatus: {
+      type: String,
+      enum: ["not_required", "pending", "reconciled", "discrepancy"],
+      default: "not_required",
+      index: true,
+    },
+    lastReconciliationDate: {
+      type: Date,
+    },
+    reconciliationNotes: {
+      type: String,
+    },
+    failureReason: {
+      type: String,
+    },
+    failureCode: {
+      type: String,
+    },
+    retryCount: {
+      type: Number,
+      default: 0,
+    },
+    maxRetries: {
+      type: Number,
+      default: 3,
+    },
+    refundStatus: {
+      type: String,
+      enum: ["not_initiated", "pending", "processed", "failed"],
+    },
+    refundAmount: {
+      type: Number,
+    },
+    refundId: {
+      type: String,
+    },
+    refundReason: {
+      type: String,
+    },
+    refundDate: {
+      type: Date,
+    },
+    refundProcessedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
     },
     needs80G: {
       type: Boolean,
@@ -125,6 +202,9 @@ const PaymentSchema: Schema = new Schema(
       type: String,
       enum: ["card", "netbanking", "wallet", "upi", "other"],
     },
+    razorpayResponse: {
+      type: Schema.Types.Mixed,
+    },
     invoiceNumber: {
       type: String,
       unique: true,
@@ -134,6 +214,23 @@ const PaymentSchema: Schema = new Schema(
       type: String,
       enum: ["standard", "80g"],
       default: "standard",
+    },
+    invoiceSent: {
+      type: Boolean,
+      default: false,
+    },
+    invoiceSentDate: {
+      type: Date,
+    },
+    webhookReceived: {
+      type: Boolean,
+      default: false,
+    },
+    webhookReceivedAt: {
+      type: Date,
+    },
+    webhookEventId: {
+      type: String,
     },
     notes: {
       type: String,

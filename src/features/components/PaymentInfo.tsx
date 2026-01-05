@@ -9,9 +9,11 @@ import {
   Zap,
   Wallet,
   Building2,
+  ArrowRight,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 interface SiteSettings {
   bankName: string;
@@ -60,7 +62,7 @@ const PaymentInfo = () => {
             <div className="grid lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
               <div className="lg:col-span-5 p-10 bg-slate-50/50">
                 <div className="w-52 h-52 bg-slate-200 rounded-2xl mx-auto" />
-                <div className="mt-8 h-12 bg-slate-200 rounded-xl w-full max-w-[280px] mx-auto" />
+                <div className="mt-8 h-12 bg-slate-200 rounded-xl w-full max-w-70 mx-auto" />
               </div>
               <div className="lg:col-span-7 p-12">
                 <div className="space-y-4">
@@ -79,13 +81,13 @@ const PaymentInfo = () => {
   if (!settings) {
     return null;
   }
-  // Clean UPI ID - remove any spaces or special characters except @ and .
-  const cleanUpiId = settings.upiId.trim().toLowerCase();
-  const cleanPayeeName = settings.organizationName.trim().toUpperCase();
 
-  // Standard BHIM UPI QR format
-  const upiString = `upi://pay?pa=${cleanUpiId}&pn=${cleanPayeeName}&cu=INR`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&format=png&data=${encodeURIComponent(upiString)}`;
+  // Donation page URL for QR code
+  const donationPageUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/donation`
+      : "https://yourwebsite.com/donation";
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&format=png&data=${encodeURIComponent(donationPageUrl)}`;
   return (
     <section className="min-h-screen bg-slate-50 flex items-center justify-center py-20 px-4 font-sans">
       <div className="max-w-5xl w-full">
@@ -115,46 +117,35 @@ const PaymentInfo = () => {
 
               {/* QR Container */}
               <div className="relative group z-10">
-                <div className="absolute -inset-1 bg-gradient-to-tr from-orange-500 to-rose-500 rounded-3xl opacity-0 group-hover:opacity-100 blur transition duration-700"></div>
+                <div className="absolute -inset-1 bg-linear-to-tr from-orange-500 to-rose-500 rounded-3xl opacity-0 group-hover:opacity-100 blur transition duration-700"></div>
 
                 <div className="relative bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
                   <Image
                     src={qrUrl}
-                    alt="Donate UPI QR"
+                    alt="Donate Page QR"
                     width={220}
                     height={220}
                     className="w-52 h-52 rounded-xl mix-blend-multiply"
                     unoptimized
                   />
 
-                  {/* "Scan Any App" Badge */}
+                  {/* "Scan to Donate" Badge */}
                   <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg whitespace-nowrap flex items-center gap-1.5 border border-slate-700">
                     <Smartphone className="w-3 h-3" />
-                    Scan with any App
+                    Scan to Donate
                   </div>
                 </div>
               </div>
 
-              {/* UPI ID Copy */}
-              <div className="mt-8 w-full max-w-[280px]">
-                <div
-                  onClick={() => copyToClipboard(settings.upiId, "upi")}
-                  className="flex items-center justify-between px-4 py-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-orange-300 hover:shadow-md transition-all group"
-                >
-                  <div className="text-left">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase">
-                      UPI ID
-                    </p>
-                    <p className="font-mono text-slate-700 font-semibold text-sm truncate">
-                      {settings.upiId}
-                    </p>
-                  </div>
-                  {copied === "upi" ? (
-                    <Check className="w-4 h-4 text-green-500" />
-                  ) : (
-                    <Copy className="w-4 h-4 text-slate-300 group-hover:text-orange-500 transition-colors" />
-                  )}
-                </div>
+              {/* Donate Now Button */}
+              <div className="mt-8 w-full max-w-70">
+                <Link href="/donation">
+                  <button className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-linear-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 group">
+                    <HeartHandshake className="w-5 h-5" />
+                    <span>Donate Now</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </Link>
               </div>
 
               {/* Payment App Icons (Now SVG based) */}

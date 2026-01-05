@@ -1,8 +1,6 @@
 import mongoose from "mongoose";
 
-export const MONGODB_URI =
-  "mongodb+srv://samriddhisevatrust2022_db_user:BTZJThJgo0mBRW7H@cluster0.uzcxulq.mongodb.net/qa?retryWrites=true&w=majority";
-
+export const MONGODB_URI = process.env["NEXT_PUBLIC_MONGODB_URI"] as string;
 if (!MONGODB_URI) {
   throw new Error("Please define the MONGODB_URI environment variable");
 }

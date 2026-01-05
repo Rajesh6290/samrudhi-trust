@@ -1,8 +1,17 @@
 "use client";
 
-import { useState } from "react";
 import useSwr from "@/features/hooks/useSwr";
-import { Eye, RefreshCw, AlertCircle, CheckCircle, X } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle,
+  CreditCard,
+  Eye,
+  Filter,
+  RefreshCw,
+  Webhook,
+  X,
+} from "lucide-react";
+import { useState } from "react";
 
 interface WebhookLog {
   _id: string;
@@ -10,15 +19,58 @@ interface WebhookLog {
   status: "success" | "failed";
   errorMessage?: string;
   payload: Record<string, unknown>;
+  signature: string;
+  processedAt: string;
   createdAt: string;
 }
 
 export default function WebhookLogsPage() {
-  const { data: logsData, isLoading, mutate } = useSwr("webhooks/logs");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "success" | "failed"
+  >("all");
+  const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
+  const [showFilters, setShowFilters] = useState(false);
+
+  const {
+    data: logsData,
+    isLoading,
+    mutate,
+  } = useSwr(
+    `webhooks/logs${statusFilter !== "all" ? `?status=${statusFilter}` : ""}${
+      eventTypeFilter !== "all"
+        ? `${statusFilter !== "all" ? "&" : "?"}eventType=${eventTypeFilter}`
+        : ""
+    }`
+  );
   const [selectedLog, setSelectedLog] = useState<WebhookLog | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const logs: WebhookLog[] = logsData?.logs || [];
+
+  // Get unique event types for filter
+  const eventTypes = Array.from(new Set(logs.map((log) => log.eventType)));
+
+  // Categorize logs
+  const razorpayLogs = logs.filter(
+    (log) =>
+      log.eventType.startsWith("payment.") ||
+      log.eventType.startsWith("order.") ||
+      log.eventType.startsWith("refund.")
+  );
+  const otherLogs = logs.filter(
+    (log) =>
+      !log.eventType.startsWith("payment.") &&
+      !log.eventType.startsWith("order.") &&
+      !log.eventType.startsWith("refund.")
+  );
+
+  const stats = {
+    total: logs.length,
+    success: logs.filter((l) => l.status === "success").length,
+    failed: logs.filter((l) => l.status === "failed").length,
+    razorpay: razorpayLogs.length,
+    other: otherLogs.length,
+  };
 
   const handleRefresh = () => {
     mutate();
@@ -32,15 +84,162 @@ export default function WebhookLogsPage() {
   return (
     <div className="w-full h-fit">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Webhook Logs</h1>
-        <button
-          onClick={handleRefresh}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Refresh
-        </button>
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">
+              Webhook Logs
+            </h1>
+            <p className="text-gray-600">
+              Monitor and debug all webhook events
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              <Filter className="w-4 h-4" />
+              Filters
+            </button>
+            <button
+              onClick={handleRefresh}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Webhooks</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.total}
+                </p>
+              </div>
+              <Webhook className="w-8 h-8 text-blue-500" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Success</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {stats.success}
+                </p>
+              </div>
+              <CheckCircle className="w-8 h-8 text-green-500" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Failed</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {stats.failed}
+                </p>
+              </div>
+              <AlertCircle className="w-8 h-8 text-red-500" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Razorpay</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {stats.razorpay}
+                </p>
+              </div>
+              <CreditCard className="w-8 h-8 text-purple-500" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Other Events</p>
+                <p className="text-2xl font-bold text-gray-600">
+                  {stats.other}
+                </p>
+              </div>
+              <Webhook className="w-8 h-8 text-gray-500" />
+            </div>
+          </div>
+        </div>
+
+        {/* Filters */}
+        {showFilters && (
+          <div className="bg-white rounded-lg shadow p-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status
+                </label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) =>
+                    setStatusFilter(
+                      e.target.value as "all" | "success" | "failed"
+                    )
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">All Status</option>
+                  <option value="success">Success</option>
+                  <option value="failed">Failed</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Event Type
+                </label>
+                <select
+                  value={eventTypeFilter}
+                  onChange={(e) => setEventTypeFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">All Events</option>
+                  <optgroup label="Razorpay Events">
+                    <option value="payment.captured">Payment Captured</option>
+                    <option value="payment.failed">Payment Failed</option>
+                    <option value="order.paid">Order Paid</option>
+                    <option value="refund.processed">Refund Processed</option>
+                  </optgroup>
+                  {eventTypes.filter(
+                    (t) =>
+                      !t.startsWith("payment.") &&
+                      !t.startsWith("order.") &&
+                      !t.startsWith("refund.")
+                  ).length > 0 && (
+                    <optgroup label="Other Events">
+                      {eventTypes
+                        .filter(
+                          (t) =>
+                            !t.startsWith("payment.") &&
+                            !t.startsWith("order.") &&
+                            !t.startsWith("refund.")
+                        )
+                        .map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -91,7 +290,14 @@ export default function WebhookLogsPage() {
                     className="hover:bg-gray-50 transition-colors"
                   >
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {log.eventType}
+                      <div className="flex items-center gap-2">
+                        {(log.eventType.startsWith("payment.") ||
+                          log.eventType.startsWith("order.") ||
+                          log.eventType.startsWith("refund.")) && (
+                          <CreditCard className="w-4 h-4 text-purple-600" />
+                        )}
+                        <span className="font-mono">{log.eventType}</span>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       {log.status === "success" ? (
@@ -189,6 +395,24 @@ export default function WebhookLogsPage() {
                   </span>
                   <p className="text-base text-gray-900 mt-1">
                     {new Date(selectedLog.createdAt).toLocaleString("en-IN")}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-sm font-semibold text-gray-600">
+                    Processed At:
+                  </span>
+                  <p className="text-base text-gray-900 mt-1">
+                    {new Date(selectedLog.processedAt).toLocaleString("en-IN")}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-sm font-semibold text-gray-600">
+                    Signature:
+                  </span>
+                  <p className="text-xs font-mono text-gray-700 mt-1 break-all bg-gray-50 p-2 rounded">
+                    {selectedLog.signature}
                   </p>
                 </div>
 

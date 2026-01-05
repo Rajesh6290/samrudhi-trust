@@ -113,6 +113,12 @@ const MENU_ITEMS = [
     permission: "payments",
   },
   {
+    icon: QrCode,
+    label: "Reconciliation",
+    href: "/admin/payments/reconciliation",
+    permission: "payments",
+  },
+  {
     icon: Webhook,
     label: "Webhooks",
     href: "/admin/webhooks",

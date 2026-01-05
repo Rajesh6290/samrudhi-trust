@@ -13,16 +13,25 @@ const PaymentInfo = dynamic(() => import("@/features/components/PaymentInfo"), {
   loading: () => <div className="h-64 bg-slate-900" />,
 });
 
-const DefaultLayouts = ({ children }: { children: React.ReactNode }) => {
+const DefaultLayouts = ({
+  children,
+  showPaymentInfo = true,
+}: {
+  children: React.ReactNode;
+  showPaymentInfo?: boolean;
+}) => {
   return (
-    <div className="w-full min-h-dvh bg-white flex relative flex-col gap-5 ">
+    <div className="w-full min-h-dvh bg-white flex relative flex-col">
       <ScrollProgress />
       <Suspense fallback={<div className="h-20 bg-white" />}>
         <Navbar />
         {children}
-        <Suspense fallback={<div className="h-96 bg-white animate-pulse" />}>
-          <PaymentInfo />
-        </Suspense>
+        {showPaymentInfo && (
+          <Suspense fallback={<div className="h-96 bg-white animate-pulse" />}>
+            <PaymentInfo />
+          </Suspense>
+        )}
+
         <Suspense fallback={<div className="h-64 bg-slate-900" />}>
           <Footer />
         </Suspense>

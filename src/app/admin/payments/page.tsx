@@ -1,28 +1,38 @@
 "use client";
 
-import { useState, useEffect, startTransition } from "react";
-import { useSearchParams } from "next/navigation";
-import { Formik, Form, Field, ErrorMessage } from "formik";
-import * as Yup from "yup";
-import {
-  DollarSign,
-  Users,
-  Download,
-  Gift,
-  Search,
-  Loader2,
-  BadgeCheck,
-  Receipt,
-  Eye,
-  QrCode,
-  Plus,
-  ArrowUpRight,
-} from "lucide-react";
-import useSwr from "@/features/hooks/useSwr";
-import useMutation from "@/features/hooks/useMutation";
-import { toast } from "react-toastify";
 import MemberPaymentDrawer from "@/features/components/admin/MemberPaymentDrawer";
 import QRScanner from "@/features/components/admin/QRScanner";
+import useMutation from "@/features/hooks/useMutation";
+import useSwr from "@/features/hooks/useSwr";
+import { ErrorMessage, Field, Form, Formik } from "formik";
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  BadgeCheck,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  CreditCard,
+  DollarSign,
+  Download,
+  Eye,
+  Filter,
+  Gift,
+  Mail,
+  Phone,
+  Plus,
+  QrCode,
+  Receipt,
+  Search,
+  TrendingUp,
+  Users,
+  X,
+  XCircle,
+} from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { startTransition, useEffect, useState } from "react";
+import { toast } from "react-toastify";
+import * as Yup from "yup";
 
 interface Payment {
   _id: string;
@@ -65,9 +75,9 @@ export default function AdminPaymentsPage() {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isPayoutModalOpen, setIsPayoutModalOpen] = useState(false);
   const [qrScanData, setQrScanData] = useState<string>("");
+  const [showFilters, setShowFilters] = useState(false);
   const pageLimit = 15;
 
-  // Check for QR scan data from URL params (from header QR button)
   useEffect(() => {
     const qrData = searchParams.get("qrScan");
     if (qrData) {
@@ -76,35 +86,22 @@ export default function AdminPaymentsPage() {
         setQrScanData(qrData);
         setIsPayoutModalOpen(true);
       });
-      // Clean up URL
       window.history.replaceState({}, "", "/admin/payments");
     }
   }, [searchParams]);
 
-  // Fetch payments based on active tab
   const getQueryParams = () => {
     let params = `page=${page}&limit=${pageLimit}`;
-
-    if (activeTab === "members") {
-      params += "&paymentType=member";
-    } else if (activeTab === "donations") {
-      params += "&paymentType=donation";
-    } else if (activeTab === "80g") {
-      params += "&needs80G=true";
-    }
-
-    if (statusFilter !== "all") {
-      params += `&status=${statusFilter}`;
-    }
-
+    if (activeTab === "members") params += "&paymentType=member";
+    else if (activeTab === "donations") params += "&paymentType=donation";
+    else if (activeTab === "80g") params += "&needs80G=true";
+    if (statusFilter !== "all") params += `&status=${statusFilter}`;
     return params;
   };
 
   const { data: paymentsData, isLoading: paymentsLoading } = useSwr(
     `payments?${getQueryParams()}`
   );
-
-  // Fetch payouts data
   const { data: payoutsData } = useSwr(
     activeTab === "payouts" ? "payouts" : null
   );
@@ -113,7 +110,6 @@ export default function AdminPaymentsPage() {
   const pagination = paymentsData?.pagination;
   const payouts = payoutsData?.payouts || [];
 
-  // Calculate analytics
   const analytics = {
     total: payments.length,
     totalAmount: payments.reduce(
@@ -128,12 +124,10 @@ export default function AdminPaymentsPage() {
       .length,
   };
 
-  // Filter payments by search
   const filteredPayments = payments.filter((p) => {
     const searchLower = searchQuery.toLowerCase();
     const name = p.paymentType === "member" ? p.member?.name : p.donorName;
     const email = p.paymentType === "member" ? p.member?.email : p.donorEmail;
-
     return (
       name?.toLowerCase().includes(searchLower) ||
       email?.toLowerCase().includes(searchLower) ||
@@ -146,9 +140,7 @@ export default function AdminPaymentsPage() {
     try {
       const response = await fetch(`/api/payments/invoice/${paymentId}`);
       const data = await response.json();
-
       if (data.success && data.invoiceHTML) {
-        // Create a new window with the invoice
         const invoiceWindow = window.open("", "_blank");
         if (invoiceWindow) {
           invoiceWindow.document.write(data.invoiceHTML);
@@ -172,527 +164,291 @@ export default function AdminPaymentsPage() {
   };
 
   return (
-    <div className="space-y-6 w-full">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Payment Analytics
-        </h1>
-        <p className="text-gray-600">
-          Comprehensive payment management and analytics
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-blue-600" />
-            </div>
-            <span className="text-sm font-medium text-gray-500">
-              Total Revenue
-            </span>
+    <div className="w-full h-fit">
+      <div className="w-full mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
+              Payment Dashboard
+            </h1>
+            <p className="text-gray-600 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              Real-time payment analytics and management
+            </p>
           </div>
-          <div className="text-2xl font-bold text-gray-900">
-            ₹{analytics.totalAmount.toLocaleString("en-IN")}
-          </div>
-          <div className="text-sm text-gray-500 mt-1">
-            {analytics.completed} completed
-          </div>
-        </div>
-        <div
-          className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:border-green-300 transition-all cursor-pointer group"
-          onClick={() => setIsDrawerOpen(true)}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-green-200 transition-colors">
-              <Users className="w-6 h-6 text-green-600" />
-            </div>
-            <div className="flex flex-col items-end gap-1">
-              <span className="text-sm font-medium text-gray-500">
-                Member Payments
-              </span>
-              <button className="flex items-center gap-1 text-xs text-green-600 hover:text-green-700 font-medium">
-                <Eye className="w-3 h-3" />
-                View Details
-              </button>
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-gray-900">
-            {analytics.members}
-          </div>
-          <div className="text-sm text-gray-500 mt-1">
-            Monthly subscriptions
+          <div className="flex gap-3">
+            <button
+              onClick={() => setIsScannerOpen(true)}
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-5 py-2.5 rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-medium"
+            >
+              <QrCode size={18} />
+              Scan QR
+            </button>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Gift className="w-6 h-6 text-purple-600" />
-            </div>
-            <span className="text-sm font-medium text-gray-500">Donations</span>
-          </div>
-          <div className="text-2xl font-bold text-gray-900">
-            {analytics.donations}
-          </div>
-          <div className="text-sm text-gray-500 mt-1">Public contributions</div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <BadgeCheck className="w-6 h-6 text-yellow-600" />
-            </div>
-            <span className="text-sm font-medium text-gray-500">
-              80G Certificates
-            </span>
-          </div>
-          <div className="text-2xl font-bold text-gray-900">
-            {analytics.with80G}
-          </div>
-          <div className="text-sm text-gray-500 mt-1">Tax exemption</div>
-        </div>
-      </div>
-      {/* Tabs and Filters */}
-      <div className="bg-white w-full rounded-xl shadow-sm border border-gray-100 mb-6">
-        <div className="p-6 border-b border-gray-100">
-          {/* Tabs */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            <button
-              onClick={() => {
-                setActiveTab("all");
-                setPage(1);
-              }}
-              className={`px-6 py-2.5 rounded-lg font-medium transition-all ${
-                activeTab === "all"
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              All Payments
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab("members");
-                setPage(1);
-              }}
-              className={`px-6 py-2.5 rounded-lg font-medium transition-all ${
-                activeTab === "members"
-                  ? "bg-green-600 text-white shadow-lg shadow-green-500/30"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              <Users className="w-4 h-4 inline mr-2" />
-              Member Payments
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab("donations");
-                setPage(1);
-              }}
-              className={`px-6 py-2.5 rounded-lg font-medium transition-all ${
-                activeTab === "donations"
-                  ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              <Gift className="w-4 h-4 inline mr-2" />
-              Donations
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab("80g");
-                setPage(1);
-              }}
-              className={`px-6 py-2.5 rounded-lg font-medium transition-all ${
-                activeTab === "80g"
-                  ? "bg-yellow-600 text-white shadow-lg shadow-yellow-500/30"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              <BadgeCheck className="w-4 h-4 inline mr-2" />
-              80G Certificates
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab("payouts");
-                setPage(1);
-              }}
-              className={`px-6 py-2.5 rounded-lg font-medium transition-all ${
-                activeTab === "payouts"
-                  ? "bg-orange-600 text-white shadow-lg shadow-orange-500/30"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              <ArrowUpRight className="w-4 h-4 inline mr-2" />
-              Payouts
-            </button>
-          </div>
-
-          {/* Search and Filters */}
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-50">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search by name, email, invoice..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+        {/* Analytics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-6 border border-gray-100 hover:border-blue-200 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-transparent rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-500" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform duration-300">
+                  <DollarSign className="w-7 h-7 text-white" />
+                </div>
+                <span className="text-sm font-semibold text-gray-500 bg-blue-50 px-3 py-1 rounded-full">
+                  Total
+                </span>
+              </div>
+              <div className="text-3xl font-bold text-gray-900 mb-1">
+                ₹{analytics.totalAmount.toLocaleString("en-IN")}
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                {analytics.completed} completed transactions
               </div>
             </div>
+          </div>
 
-            <select
-              value={statusFilter}
-              onChange={(e) =>
-                setStatusFilter(e.target.value as typeof statusFilter)
-              }
-              className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-            >
-              <option value="all">All Status</option>
-              <option value="completed">Completed</option>
-              <option value="pending">Pending</option>
-              <option value="failed">Failed</option>
-            </select>
+          <div
+            onClick={() => setIsDrawerOpen(true)}
+            className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-6 border border-gray-100 hover:border-green-200 cursor-pointer relative overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-500/10 to-transparent rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-500" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform duration-300">
+                  <Users className="w-7 h-7 text-white" />
+                </div>
+                <button className="flex items-center gap-1 text-xs text-green-600 hover:text-green-700 font-semibold bg-green-50 px-3 py-1.5 rounded-full hover:bg-green-100 transition-colors">
+                  <Eye className="w-3 h-3" />
+                  View
+                </button>
+              </div>
+              <div className="text-3xl font-bold text-gray-900 mb-1">
+                {analytics.members}
+              </div>
+              <div className="text-sm text-gray-600">Member subscriptions</div>
+            </div>
+          </div>
 
-            {activeTab === "members" && (
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-6 border border-gray-100 hover:border-purple-200 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-transparent rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-500" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform duration-300">
+                  <Gift className="w-7 h-7 text-white" />
+                </div>
+                <span className="text-sm font-semibold text-gray-500 bg-purple-50 px-3 py-1 rounded-full">
+                  Public
+                </span>
+              </div>
+              <div className="text-3xl font-bold text-gray-900 mb-1">
+                {analytics.donations}
+              </div>
+              <div className="text-sm text-gray-600">Generous donations</div>
+            </div>
+          </div>
+
+          <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-6 border border-gray-100 hover:border-yellow-200 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-yellow-500/10 to-transparent rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-500" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-14 h-14 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl flex items-center justify-center shadow-lg shadow-yellow-500/30 group-hover:scale-110 transition-transform duration-300">
+                  <BadgeCheck className="w-7 h-7 text-white" />
+                </div>
+                <span className="text-sm font-semibold text-gray-500 bg-yellow-50 px-3 py-1 rounded-full">
+                  80G
+                </span>
+              </div>
+              <div className="text-3xl font-bold text-gray-900 mb-1">
+                {analytics.with80G}
+              </div>
+              <div className="text-sm text-gray-600">
+                Tax certificates issued
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Card */}
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+          {/* Tabs */}
+          <div className="bg-gradient-to-r from-gray-50 to-blue-50 p-6 border-b border-gray-200">
+            <div className="flex flex-wrap gap-3 mb-6">
+              {[
+                {
+                  id: "all",
+                  label: "All Payments",
+                  icon: Receipt,
+                  color: "blue",
+                },
+                {
+                  id: "members",
+                  label: "Members",
+                  icon: Users,
+                  color: "green",
+                },
+                {
+                  id: "donations",
+                  label: "Donations",
+                  icon: Gift,
+                  color: "purple",
+                },
+                {
+                  id: "80g",
+                  label: "80G Certs",
+                  icon: BadgeCheck,
+                  color: "yellow",
+                },
+                {
+                  id: "payouts",
+                  label: "Payouts",
+                  icon: ArrowUpRight,
+                  color: "orange",
+                },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id as typeof activeTab);
+                    setPage(1);
+                  }}
+                  className={`flex items-center gap-2 px-5 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                    activeTab === tab.id
+                      ? `bg-gradient-to-r from-${tab.color}-600 to-${tab.color}-700 text-white shadow-lg scale-105`
+                      : "bg-white text-gray-700 hover:bg-gray-50 hover:scale-105 shadow-sm"
+                  }`}
+                >
+                  <tab.icon className="w-4 h-4" />
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Search and Filters */}
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search by name, email, invoice number..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
+                />
+              </div>
+
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center gap-2 px-5 py-3 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-300 transition-all font-medium"
+              >
+                <Filter className="w-5 h-5" />
+                Filters
+                {(statusFilter !== "all" || activeTab === "members") && (
+                  <span className="w-2 h-2 bg-blue-500 rounded-full" />
+                )}
+              </button>
+            </div>
+
+            {/* Filter Panel */}
+            {showFilters && (
+              <div className="mt-4 p-4 bg-white rounded-xl border-2 border-gray-200 space-y-3 animate-in slide-in-from-top duration-200">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold text-gray-700">
+                    Filter Options
+                  </span>
+                  <button
+                    onClick={() => setShowFilters(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Status
+                    </label>
+                    <select
+                      value={statusFilter}
+                      onChange={(e) =>
+                        setStatusFilter(e.target.value as typeof statusFilter)
+                      }
+                      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    >
+                      <option value="all">All Status</option>
+                      <option value="completed">✓ Completed</option>
+                      <option value="pending">⏱ Pending</option>
+                      <option value="failed">✗ Failed</option>
+                    </select>
+                  </div>
+                  {activeTab === "members" && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Month
+                      </label>
+                      <input
+                        type="month"
+                        value={selectedMonth}
+                        onChange={(e) => setSelectedMonth(e.target.value)}
+                        className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Content Area */}
+          <div className="overflow-x-auto">
+            {activeTab === "payouts" ? (
+              <PayoutsView
+                payouts={payouts}
+                onAddPayout={() => {
+                  setQrScanData("");
+                  setIsPayoutModalOpen(true);
+                }}
+                onScanQR={() => setIsScannerOpen(true)}
+              />
+            ) : paymentsLoading ? (
+              <LoadingState />
+            ) : filteredPayments.length === 0 ? (
+              <EmptyState />
+            ) : (
+              <PaymentsTable
+                payments={filteredPayments}
+                onDownloadInvoice={downloadInvoice}
               />
             )}
           </div>
-        </div>
 
-        {/* Payments Table */}
-        <div className="overflow-x-auto">
-          {activeTab === "payouts" ? (
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold">
-                  Manual Payouts & Expenses
-                </h3>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setIsScannerOpen(true)}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-                  >
-                    <QrCode size={18} />
-                    Scan QR
-                  </button>
-                  <button
-                    onClick={() => {
-                      setQrScanData("");
-                      setIsPayoutModalOpen(true);
-                    }}
-                    className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-                  >
-                    <Plus size={18} />
-                    Add Payout
-                  </button>
-                </div>
-              </div>
-
-              {payouts.length === 0 ? (
-                <div className="text-center py-12">
-                  <ArrowUpRight className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">No payouts recorded yet</p>
-                  <p className="text-sm text-gray-400 mt-1">
-                    Record manual payments and expenses here
-                  </p>
-                </div>
-              ) : (
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                        Recipient
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                        Amount
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                        Purpose
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                        Category
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                        Method
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                        Transaction ID
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                        Date
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {payouts.map((payout: (typeof payouts)[0]) => (
-                      <tr key={payout._id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3">
-                          <div className="font-medium">
-                            {payout.recipientName}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {payout.recipientPhone}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 font-semibold">
-                          ₹{payout.amount.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 text-sm">{payout.purpose}</td>
-                        <td className="px-4 py-3">
-                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full capitalize">
-                            {payout.category}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm capitalize">
-                          {payout.paymentMethod.replace("_", " ")}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {payout.transactionId || "-"}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {new Date(payout.createdAt).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          ) : paymentsLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-              <span className="ml-3 text-gray-600">Loading payments...</span>
-            </div>
-          ) : filteredPayments.length === 0 ? (
-            <div className="text-center py-20">
-              <Receipt className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">No payments found</p>
-              <p className="text-gray-400 text-sm mt-1">
-                Try adjusting your filters
-              </p>
-            </div>
-          ) : (
-            <table className="w-full">
-              <thead className="bg-gray-50 border-y border-gray-200">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Donor/Member
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Amount
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Invoice
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    80G
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredPayments.map((payment) => {
-                  const name =
-                    payment.paymentType === "member"
-                      ? payment.member?.name
-                      : payment.donorName;
-                  const email =
-                    payment.paymentType === "member"
-                      ? payment.member?.email
-                      : payment.donorEmail;
-
-                  return (
-                    <tr
-                      key={payment._id}
-                      className="hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="px-6 py-4">
-                        <div>
-                          <div className="font-medium text-gray-900">
-                            {name || "N/A"}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {email || "N/A"}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {payment.paymentType === "member" ? (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            <Users className="w-3 h-3 mr-1" />
-                            Member
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                            <Gift className="w-3 h-3 mr-1" />
-                            Donation
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-gray-900">
-                          ₹{payment.amount.toLocaleString("en-IN")}
-                        </div>
-                        {payment.month && (
-                          <div className="text-xs text-gray-500">
-                            {new Date(payment.month).toLocaleDateString(
-                              "en-IN",
-                              { month: "short", year: "numeric" }
-                            )}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {new Date(payment.paymentDate).toLocaleDateString(
-                          "en-IN",
-                          {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          }
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-xs font-mono text-gray-600">
-                          {payment.invoiceNumber || "N/A"}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {payment.needs80G ? (
-                          <div>
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                              <BadgeCheck className="w-3 h-3 mr-1" />
-                              Yes
-                            </span>
-                            {payment.certificateNumber80G && (
-                              <div className="text-xs text-gray-500 mt-1 font-mono">
-                                {payment.certificateNumber80G}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-400">No</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {payment.status === "completed" && (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Completed
-                          </span>
-                        )}
-                        {payment.status === "pending" && (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                            Pending
-                          </span>
-                        )}
-                        {payment.status === "failed" && (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            Failed
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {payment.status === "completed" && (
-                          <button
-                            onClick={() => downloadInvoice(payment._id)}
-                            className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                          >
-                            <Download className="w-4 h-4 mr-1" />
-                            {payment.needs80G ? "80G" : "Invoice"}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          {/* Pagination */}
+          {pagination && pagination.pages > 1 && (
+            <Pagination
+              currentPage={page}
+              totalPages={pagination.pages}
+              total={pagination.total}
+              pageLimit={pageLimit}
+              onPageChange={setPage}
+            />
           )}
         </div>
-
-        {/* Pagination */}
-        {pagination && pagination.pages > 1 && (
-          <div className="p-6 border-t border-gray-100 flex items-center justify-between">
-            <div className="text-sm text-gray-600">
-              Showing {(page - 1) * pageLimit + 1} to{" "}
-              {Math.min(page * pageLimit, pagination.total)} of{" "}
-              {pagination.total} payments
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPage(Math.max(1, page - 1))}
-                disabled={page === 1}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              <div className="flex items-center gap-1">
-                {Array.from(
-                  { length: Math.min(5, pagination.pages) },
-                  (_, i) => {
-                    const pageNum = i + 1;
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setPage(pageNum)}
-                        className={`px-3 py-2 text-sm font-medium rounded-lg ${
-                          page === pageNum
-                            ? "bg-blue-600 text-white"
-                            : "text-gray-700 hover:bg-gray-100"
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  }
-                )}
-              </div>
-              <button
-                onClick={() => setPage(Math.min(pagination.pages, page + 1))}
-                disabled={page === pagination.pages}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
       </div>
-      {/* Member Payment Drawer */}
+
+      {/* Modals and Drawers */}
       <MemberPaymentDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         selectedMonth={selectedMonth}
       />
-
-      {/* QR Scanner */}
       <QRScanner
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
         onScan={handleQRScan}
       />
-
-      {/* Payout Modal */}
       {isPayoutModalOpen && (
         <PayoutModal
           qrData={qrScanData}
@@ -702,6 +458,400 @@ export default function AdminPaymentsPage() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+// Loading State Component
+function LoadingState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20">
+      <div className="relative">
+        <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+        <div
+          className="absolute inset-0 w-16 h-16 border-4 border-transparent border-r-blue-400 rounded-full animate-spin"
+          style={{ animationDirection: "reverse", animationDuration: "1s" }}
+        />
+      </div>
+      <span className="mt-6 text-gray-600 font-medium">
+        Loading payments...
+      </span>
+    </div>
+  );
+}
+
+// Empty State Component
+function EmptyState() {
+  return (
+    <div className="text-center py-20">
+      <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
+        <Receipt className="w-12 h-12 text-gray-400" />
+      </div>
+      <p className="text-gray-900 text-xl font-semibold mb-2">
+        No payments found
+      </p>
+      <p className="text-gray-500">
+        Try adjusting your filters or search criteria
+      </p>
+    </div>
+  );
+}
+
+// Payouts View Component
+function PayoutsView({
+  payouts,
+  onAddPayout,
+  onScanQR,
+}: {
+  payouts: any[];
+  onAddPayout: () => void;
+  onScanQR: () => void;
+}) {
+  return (
+    <div className="p-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div>
+          <h3 className="text-2xl font-bold text-gray-900">
+            Manual Payouts & Expenses
+          </h3>
+          <p className="text-gray-600 mt-1">
+            Track all manual payments and business expenses
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={onScanQR}
+            className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-5 py-2.5 rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-medium"
+          >
+            <QrCode size={18} />
+            Scan QR
+          </button>
+          <button
+            onClick={onAddPayout}
+            className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-700 text-white px-5 py-2.5 rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-medium"
+          >
+            <Plus size={18} />
+            Add Payout
+          </button>
+        </div>
+      </div>
+
+      {payouts.length === 0 ? (
+        <div className="text-center py-16 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl">
+          <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <ArrowUpRight className="w-10 h-10 text-orange-500" />
+          </div>
+          <p className="text-gray-700 font-semibold text-lg">
+            No payouts recorded yet
+          </p>
+          <p className="text-gray-500 mt-2">
+            Start by scanning a QR code or adding a manual entry
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {payouts.map((payout: any) => (
+            <div
+              key={payout._id}
+              className="bg-gradient-to-r from-white to-gray-50 rounded-xl border-2 border-gray-100 p-5 hover:shadow-lg transition-all duration-200 hover:border-orange-200"
+            >
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg">
+                    <ArrowUpRight className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-gray-900 text-lg">
+                      {payout.recipientName}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                      <Phone className="w-4 h-4" />
+                      {payout.recipientPhone}
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      {payout.purpose}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col md:items-end gap-2">
+                  <div className="text-2xl font-bold text-gray-900">
+                    ₹{payout.amount.toLocaleString()}
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-semibold capitalize">
+                      {payout.category}
+                    </span>
+                    <span className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full font-semibold capitalize">
+                      {payout.paymentMethod.replace("_", " ")}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <Calendar className="w-3 h-3" />
+                    {new Date(payout.createdAt).toLocaleDateString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Payments Table Component
+function PaymentsTable({
+  payments,
+  onDownloadInvoice,
+}: {
+  payments: Payment[];
+  onDownloadInvoice: (id: string) => void;
+}) {
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "completed":
+        return <CheckCircle2 className="w-4 h-4" />;
+      case "pending":
+        return <Clock className="w-4 h-4" />;
+      case "failed":
+        return <XCircle className="w-4 h-4" />;
+      default:
+        return null;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "completed":
+        return "bg-green-100 text-green-700 border-green-200";
+      case "pending":
+        return "bg-yellow-100 text-yellow-700 border-yellow-200";
+      case "failed":
+        return "bg-red-100 text-red-700 border-red-200";
+      default:
+        return "bg-gray-100 text-gray-700";
+    }
+  };
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <thead className="bg-gradient-to-r from-gray-50 to-blue-50 border-y-2 border-gray-200">
+          <tr>
+            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+              Donor/Member
+            </th>
+            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+              Type
+            </th>
+            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+              Amount
+            </th>
+            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+              Date
+            </th>
+            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+              Invoice
+            </th>
+            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+              80G
+            </th>
+            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+              Status
+            </th>
+            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y-2 divide-gray-100">
+          {payments.map((payment) => {
+            const name =
+              payment.paymentType === "member"
+                ? payment.member?.name
+                : payment.donorName;
+            const email =
+              payment.paymentType === "member"
+                ? payment.member?.email
+                : payment.donorEmail;
+
+            return (
+              <tr
+                key={payment._id}
+                className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all duration-200"
+              >
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
+                      {name?.[0]?.toUpperCase() || "?"}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-gray-900">
+                        {name || "N/A"}
+                      </div>
+                      <div className="text-sm text-gray-500 flex items-center gap-1">
+                        <Mail className="w-3 h-3" />
+                        {email || "N/A"}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  {payment.paymentType === "member" ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 border-2 border-green-200">
+                      <Users className="w-3.5 h-3.5" />
+                      Member
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 border-2 border-purple-200">
+                      <Gift className="w-3.5 h-3.5" />
+                      Donation
+                    </span>
+                  )}
+                </td>
+                <td className="px-6 py-4">
+                  <div className="font-bold text-gray-900 text-lg">
+                    ₹{payment.amount.toLocaleString("en-IN")}
+                  </div>
+                  {payment.month && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      {new Date(payment.month).toLocaleDateString("en-IN", {
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </div>
+                  )}
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-700">
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                    {new Date(payment.paymentDate).toLocaleDateString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="text-xs font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                    {payment.invoiceNumber || "N/A"}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  {payment.needs80G ? (
+                    <div>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 border-2 border-yellow-200">
+                        <BadgeCheck className="w-3.5 h-3.5" />
+                        Yes
+                      </span>
+                      {payment.certificateNumber80G && (
+                        <div className="text-xs text-gray-500 mt-1 font-mono">
+                          {payment.certificateNumber80G}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-400 font-medium">—</span>
+                  )}
+                </td>
+                <td className="px-6 py-4">
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border-2 ${getStatusColor(payment.status)}`}
+                  >
+                    {getStatusIcon(payment.status)}
+                    {payment.status.charAt(0).toUpperCase() +
+                      payment.status.slice(1)}
+                  </span>
+                </td>
+                <td className="px-6 py-4">
+                  {payment.status === "completed" && (
+                    <button
+                      onClick={() => onDownloadInvoice(payment._id)}
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-600 hover:text-white bg-blue-50 hover:bg-gradient-to-r hover:from-blue-600 hover:to-blue-700 rounded-lg transition-all duration-200 hover:shadow-lg hover:scale-105"
+                    >
+                      <Download className="w-4 h-4" />
+                      {payment.needs80G ? "80G" : "Invoice"}
+                    </button>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Pagination Component
+function Pagination({
+  currentPage,
+  totalPages,
+  total,
+  pageLimit,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  total: number;
+  pageLimit: number;
+  onPageChange: (page: number) => void;
+}) {
+  return (
+    <div className="p-6 border-t-2 border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="text-sm text-gray-700 font-medium">
+          Showing{" "}
+          <span className="font-bold text-blue-600">
+            {(currentPage - 1) * pageLimit + 1}
+          </span>{" "}
+          to{" "}
+          <span className="font-bold text-blue-600">
+            {Math.min(currentPage * pageLimit, total)}
+          </span>{" "}
+          of <span className="font-bold text-blue-600">{total}</span> payments
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Previous
+          </button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              const pageNum = i + 1;
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => onPageChange(pageNum)}
+                  className={`px-4 py-2 text-sm font-bold rounded-lg transition-all duration-200 ${
+                    currentPage === pageNum
+                      ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg scale-110"
+                      : "text-gray-700 bg-white border-2 border-gray-300 hover:bg-gray-50 hover:border-blue-300 hover:scale-105"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105"
+          >
+            Next
+            <ArrowUpRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -717,7 +867,6 @@ function PayoutModal({
   const [paymentMode, setPaymentMode] = useState<"paynow" | "manual">("paynow");
   const { mutation: createPayout, isLoading: isMutating } = useMutation();
 
-  // Parse QR data to extract shopkeeper details
   const parseQRData = (data: string) => {
     try {
       const parsed = JSON.parse(data);
@@ -741,7 +890,6 @@ function PayoutModal({
     ? parseQRData(qrData)
     : { name: "", phone: "", upi: "" };
 
-  // Validation schemas
   const payNowSchema = Yup.object({
     amount: Yup.number()
       .required("Amount is required")
@@ -763,7 +911,6 @@ function PayoutModal({
     paymentMethod: Yup.string().required("Payment method is required"),
   });
 
-  // Load Razorpay script
   useEffect(() => {
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
@@ -774,10 +921,8 @@ function PayoutModal({
     };
   }, []);
 
-  // Handle Pay Now with Razorpay
   const handlePayNow = async (values: { amount: string; purpose: string }) => {
     try {
-      // Create Razorpay order
       const orderResponse = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -801,7 +946,6 @@ function PayoutModal({
         description: values.purpose,
         order_id: order.id,
         handler: async (response: { razorpay_payment_id: string }) => {
-          // Payment successful, record in database
           const result = await createPayout("/api/payouts", {
             method: "POST",
             body: {
@@ -842,7 +986,6 @@ function PayoutModal({
     }
   };
 
-  // Handle Manual Entry
   const handleManualEntry = async (values: Record<string, string>) => {
     const result = await createPayout("/api/payouts", {
       method: "POST",
@@ -862,62 +1005,71 @@ function PayoutModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b">
-          <h2 className="text-2xl font-bold">Payout Management</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Pay shopkeepers or record manual payments
-          </p>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-in slide-in-from-bottom duration-300">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold">Payout Management</h2>
+              <p className="text-blue-100 mt-1">
+                Pay shopkeepers or record manual payments
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
 
-          {/* Mode Toggle */}
-          <div className="mt-4 flex gap-2 bg-gray-100 p-1 rounded-lg">
+          <div className="mt-6 flex gap-2 bg-white/10 p-1 rounded-xl backdrop-blur-sm">
             <button
               type="button"
               onClick={() => setPaymentMode("paynow")}
-              className={`flex-1 py-2 px-4 rounded-md font-medium transition ${
+              className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all duration-200 ${
                 paymentMode === "paynow"
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-white text-blue-600 shadow-lg scale-105"
+                  : "text-white hover:bg-white/10"
               }`}
             >
-              Pay Now
+              💳 Pay Now
             </button>
             <button
               type="button"
               onClick={() => setPaymentMode("manual")}
-              className={`flex-1 py-2 px-4 rounded-md font-medium transition ${
+              className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all duration-200 ${
                 paymentMode === "manual"
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-white text-blue-600 shadow-lg scale-105"
+                  : "text-white hover:bg-white/10"
               }`}
             >
-              Manual Entry
+              ✍️ Manual Entry
             </button>
           </div>
 
           {qrData && shopkeeperInfo.name && paymentMode === "paynow" && (
-            <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
-              <div className="flex items-center gap-2 mb-2">
-                <QrCode className="text-green-600" size={20} />
-                <span className="text-sm font-medium text-green-900">
+            <div className="mt-4 p-4 bg-white/20 backdrop-blur-sm rounded-xl border-2 border-white/30">
+              <div className="flex items-center gap-2 mb-3">
+                <QrCode className="text-white" size={20} />
+                <span className="text-sm font-bold text-white">
                   Shopkeeper Details
                 </span>
               </div>
-              <div className="space-y-1 text-sm">
-                <div>
-                  <span className="font-medium">Name:</span>{" "}
+              <div className="space-y-2 text-sm text-white">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">Name:</span>{" "}
                   {shopkeeperInfo.name}
                 </div>
                 {shopkeeperInfo.phone && (
-                  <div>
-                    <span className="font-medium">Phone:</span>{" "}
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4" />
                     {shopkeeperInfo.phone}
                   </div>
                 )}
                 {shopkeeperInfo.upi && (
-                  <div>
-                    <span className="font-medium">UPI:</span>{" "}
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="w-4 h-4" />
                     {shopkeeperInfo.upi}
                   </div>
                 )}
@@ -960,7 +1112,7 @@ function PayNowForm({
   hasQRData,
 }: {
   shopkeeperInfo: { name: string; phone: string; upi: string };
-  validationSchema: unknown;
+  validationSchema: any;
   onSubmit: (values: { amount: string; purpose: string }) => Promise<void>;
   onCancel: () => void;
   isLoading: boolean;
@@ -976,23 +1128,26 @@ function PayNowForm({
       onSubmit={onSubmit}
     >
       {({ errors, touched }) => (
-        <Form className="space-y-4">
+        <Form className="space-y-6">
           {!hasQRData && (
-            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800">
-                Please scan a QR code first to get shopkeeper details
+            <div className="p-4 bg-yellow-50 border-2 border-yellow-200 rounded-xl">
+              <p className="text-sm text-yellow-800 font-medium">
+                ⚠️ Please scan a QR code first to get shopkeeper details
               </p>
             </div>
           )}
 
           {hasQRData && shopkeeperInfo.name && (
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-5 rounded-xl border-2 border-green-200">
+              <label className="block text-sm font-bold text-gray-700 mb-2">
                 Paying To
               </label>
-              <div className="text-lg font-semibold">{shopkeeperInfo.name}</div>
+              <div className="text-xl font-bold text-gray-900">
+                {shopkeeperInfo.name}
+              </div>
               {shopkeeperInfo.phone && (
-                <div className="text-sm text-gray-600">
+                <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                  <Phone className="w-4 h-4" />
                   {shopkeeperInfo.phone}
                 </div>
               )}
@@ -1000,46 +1155,46 @@ function PayNowForm({
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-bold text-gray-700 mb-2">
               Amount (₹) *
             </label>
             <Field
               name="amount"
               type="number"
               placeholder="Enter amount"
-              className={`w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 ${
+              className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-blue-500/20 text-gray-900 text-lg font-semibold transition-all ${
                 errors.amount && touched.amount
                   ? "border-red-500"
-                  : "border-gray-300"
+                  : "border-gray-300 focus:border-blue-500"
               }`}
               disabled={!hasQRData}
             />
             <ErrorMessage
               name="amount"
               component="div"
-              className="text-red-500 text-sm mt-1"
+              className="text-red-500 text-sm mt-2 font-medium"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-bold text-gray-700 mb-2">
               Purpose *
             </label>
             <Field
               name="purpose"
               type="text"
               placeholder="What are you buying?"
-              className={`w-full px-4 py-2 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 ${
+              className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-blue-500/20 text-gray-900 transition-all ${
                 errors.purpose && touched.purpose
                   ? "border-red-500"
-                  : "border-gray-300"
+                  : "border-gray-300 focus:border-blue-500"
               }`}
               disabled={!hasQRData}
             />
             <ErrorMessage
               name="purpose"
               component="div"
-              className="text-red-500 text-sm mt-1"
+              className="text-red-500 text-sm mt-2 font-medium"
             />
           </div>
 
@@ -1047,14 +1202,14 @@ function PayNowForm({
             <button
               type="submit"
               disabled={isLoading || !hasQRData}
-              className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-xl hover:shadow-xl transition-all duration-200 font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105"
             >
-              {isLoading ? "Processing..." : "Pay via Razorpay"}
+              {isLoading ? "Processing..." : "💳 Pay via Razorpay"}
             </button>
             <button
               type="button"
               onClick={onCancel}
-              className="px-6 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition font-medium"
+              className="px-8 bg-gray-200 text-gray-700 py-4 rounded-xl hover:bg-gray-300 transition-all duration-200 font-bold hover:scale-105"
             >
               Cancel
             </button>
@@ -1072,7 +1227,7 @@ function ManualEntryForm({
   onCancel,
   isLoading,
 }: {
-  validationSchema: unknown;
+  validationSchema: any;
   onSubmit: (values: Record<string, string>) => Promise<void>;
   onCancel: () => void;
   isLoading: boolean;
@@ -1093,145 +1248,145 @@ function ManualEntryForm({
       onSubmit={onSubmit}
     >
       {({ errors, touched }) => (
-        <Form className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <Form className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-gray-700 mb-2">
                 Recipient Name *
               </label>
               <Field
                 name="recipientName"
                 type="text"
-                placeholder="Name"
-                className={`w-full px-4 py-2 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 ${
+                placeholder="Full name"
+                className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-blue-500/20 text-gray-900 transition-all ${
                   errors.recipientName && touched.recipientName
                     ? "border-red-500"
-                    : "border-gray-300"
+                    : "border-gray-300 focus:border-blue-500"
                 }`}
               />
               <ErrorMessage
                 name="recipientName"
                 component="div"
-                className="text-red-500 text-sm mt-1"
+                className="text-red-500 text-sm mt-1 font-medium"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-gray-700 mb-2">
                 Phone Number *
               </label>
               <Field
                 name="recipientPhone"
                 type="tel"
                 placeholder="10 digit number"
-                className={`w-full px-4 py-2 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 ${
+                className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-blue-500/20 text-gray-900 transition-all ${
                   errors.recipientPhone && touched.recipientPhone
                     ? "border-red-500"
-                    : "border-gray-300"
+                    : "border-gray-300 focus:border-blue-500"
                 }`}
               />
               <ErrorMessage
                 name="recipientPhone"
                 component="div"
-                className="text-red-500 text-sm mt-1"
+                className="text-red-500 text-sm mt-1 font-medium"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-gray-700 mb-2">
                 Amount (₹) *
               </label>
               <Field
                 name="amount"
                 type="number"
                 placeholder="0.00"
-                className={`w-full px-4 py-2 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 ${
+                className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-blue-500/20 text-gray-900 text-lg font-semibold transition-all ${
                   errors.amount && touched.amount
                     ? "border-red-500"
-                    : "border-gray-300"
+                    : "border-gray-300 focus:border-blue-500"
                 }`}
               />
               <ErrorMessage
                 name="amount"
                 component="div"
-                className="text-red-500 text-sm mt-1"
+                className="text-red-500 text-sm mt-1 font-medium"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-gray-700 mb-2">
                 Category *
               </label>
               <Field
                 as="select"
                 name="category"
-                className="w-full px-4 py-2 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                className="w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-blue-500/20 text-gray-900 font-medium transition-all border-gray-300 focus:border-blue-500"
               >
-                <option value="supplies">Supplies/Materials</option>
-                <option value="labour">Labour Payment</option>
-                <option value="service">Service</option>
-                <option value="rent">Rent</option>
-                <option value="utilities">Utilities</option>
-                <option value="other">Other</option>
+                <option value="supplies">📦 Supplies/Materials</option>
+                <option value="labour">👷 Labour Payment</option>
+                <option value="service">🔧 Service</option>
+                <option value="rent">🏢 Rent</option>
+                <option value="utilities">💡 Utilities</option>
+                <option value="other">📋 Other</option>
               </Field>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-bold text-gray-700 mb-2">
               Purpose *
             </label>
             <Field
               name="purpose"
               type="text"
               placeholder="Purpose of payment"
-              className={`w-full px-4 py-2 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 ${
+              className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-blue-500/20 text-gray-900 transition-all ${
                 errors.purpose && touched.purpose
                   ? "border-red-500"
-                  : "border-gray-300"
+                  : "border-gray-300 focus:border-blue-500"
               }`}
             />
             <ErrorMessage
               name="purpose"
               component="div"
-              className="text-red-500 text-sm mt-1"
+              className="text-red-500 text-sm mt-1 font-medium"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-gray-700 mb-2">
                 Payment Method *
               </label>
               <Field
                 as="select"
                 name="paymentMethod"
-                className="w-full px-4 py-2 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                className="w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-blue-500/20 text-gray-900 font-medium transition-all border-gray-300 focus:border-blue-500"
               >
-                <option value="cash">Cash</option>
-                <option value="upi">UPI</option>
-                <option value="bank_transfer">Bank Transfer</option>
-                <option value="cheque">Cheque</option>
+                <option value="cash">💵 Cash</option>
+                <option value="upi">📱 UPI</option>
+                <option value="bank_transfer">🏦 Bank Transfer</option>
+                <option value="cheque">📝 Cheque</option>
               </Field>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-gray-700 mb-2">
                 Transaction ID
               </label>
               <Field
                 name="transactionId"
                 type="text"
                 placeholder="Optional"
-                className="w-full px-4 py-2 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                className="w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-blue-500/20 text-gray-900 transition-all border-gray-300 focus:border-blue-500"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-bold text-gray-700 mb-2">
               Notes
             </label>
             <Field
@@ -1239,7 +1394,7 @@ function ManualEntryForm({
               name="notes"
               rows={3}
               placeholder="Additional notes..."
-              className="w-full px-4 py-2 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+              className="w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-blue-500/20 text-gray-900 transition-all border-gray-300 focus:border-blue-500"
             />
           </div>
 
@@ -1247,14 +1402,14 @@ function ManualEntryForm({
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50"
+              className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-4 rounded-xl hover:shadow-xl transition-all duration-200 font-bold text-lg disabled:opacity-50 hover:scale-105"
             >
-              {isLoading ? "Saving..." : "Record Payment"}
+              {isLoading ? "Saving..." : "✅ Record Payment"}
             </button>
             <button
               type="button"
               onClick={onCancel}
-              className="px-6 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition font-medium"
+              className="px-8 bg-gray-200 text-gray-700 py-4 rounded-xl hover:bg-gray-300 transition-all duration-200 font-bold hover:scale-105"
             >
               Cancel
             </button>

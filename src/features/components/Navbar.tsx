@@ -152,14 +152,12 @@ const Navbar = () => {
 
   return (
     <header
-      className={`
-           fixed top-0 w-full z-50 transition-all duration-500
-          ${
-            isScrolled
-              ? "bg-white/90 backdrop-blur-xl py-3 shadow-lg"
-              : "bg-transparent py-6"
-          }
-        `}
+      className={cn(
+        "fixed top-0 w-full z-50 transition-all duration-500",
+        isScrolled
+          ? "bg-white/90 backdrop-blur-xl py-3 shadow-lg"
+          : "bg-transparent py-6"
+      )}
     >
       <div className="container mx-auto px-6 flex justify-between items-center">
         <Link href="/" className="flex items-center gap-3">
@@ -290,7 +288,7 @@ const Navbar = () => {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 top-22 bg-white z-40 animate-slideDown overflow-y-auto">
+        <div className="lg:hidden fixed inset-0 top-22 bg-white z-40 animate-in slide-in-from-top-4 duration-300 overflow-y-auto">
           <nav className="flex flex-col items-start gap-2 p-8">
             <NavLink href="/" isScrolled={true} onClick={closeMobileMenu}>
               Home
@@ -422,23 +420,6 @@ const Navbar = () => {
           </nav>
         </div>
       )}
-
-      <style jsx>{`
-        @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-slideDown {
-          animation: slideDown 0.3s ease-out;
-        }
-      `}</style>
     </header>
   );
 };

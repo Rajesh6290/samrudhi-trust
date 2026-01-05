@@ -2,9 +2,9 @@ import { v2 as cloudinary } from "cloudinary";
 
 // Configure Cloudinary
 cloudinary.config({
-  cloud_name: "dxm4zavaw",
-  api_key: "899277567897154",
-  api_secret: "MamrpcS2Ad8dryANiAcmH19LC7g",
+  cloud_name: process.env["NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME"],
+  api_key: process.env["NEXT_PUBLIC_CLOUDINARY_API_KEY"],
+  api_secret: process.env["NEXT_PUBLIC_CLOUDINARY_API_SECRET"],
 });
 
 export interface UploadedMedia {
