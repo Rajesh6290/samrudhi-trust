@@ -4,6 +4,7 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import Image from "next/image";
 import Swal from "sweetalert2";
+import useMutation from "@/features/hooks/useMutation";
 
 const memberRegistrationSchema = Yup.object({
   name: Yup.string()
@@ -33,9 +34,9 @@ const memberRegistrationSchema = Yup.object({
 });
 
 export default function MemberRegisterPage() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState("");
+  const { mutation, isLoading: isSubmitting } = useMutation();
 
   const formik = useFormik({
     initialValues: {
@@ -50,13 +51,11 @@ export default function MemberRegisterPage() {
     },
     validationSchema: memberRegistrationSchema,
     onSubmit: async (values, { resetForm }) => {
-      setIsSubmitting(true);
       try {
         // Validate photo is uploaded
         if (!photoFile) {
           formik.setFieldError("photo", "Photo is required");
           formik.setFieldTouched("photo", true);
-          setIsSubmitting(false);
           return;
         }
 
@@ -71,15 +70,17 @@ export default function MemberRegisterPage() {
         formData.append("receivedTshirt", values.receivedTshirt);
         formData.append("photo", photoFile);
 
-        const response = await fetch("/api/members/register", {
+        const response = await mutation("members/register", {
           method: "POST",
           body: formData,
+          isFormData: true,
+          isAlert: false,
         });
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || "Failed to register member");
+        if (response?.status !== 200 && response?.status !== 201) {
+          throw new Error(
+            response?.results?.error || "Failed to register member"
+          );
         }
 
         Swal.fire({
@@ -100,8 +101,6 @@ export default function MemberRegisterPage() {
               ? error.message
               : "Failed to register. Please try again.",
         });
-      } finally {
-        setIsSubmitting(false);
       }
     },
   });

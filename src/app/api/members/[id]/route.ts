@@ -1,4 +1,5 @@
 import { verifyToken } from "@/lib/auth";
+import { logAuditAction } from "@/lib/auditLogger";
 import { MediaService } from "@/lib/mediaService";
 import connectDB from "@/lib/mongodb";
 import Member from "@/models/Member";
@@ -50,7 +51,11 @@ export async function PUT(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const payload = verifyToken(token);
+    const payload = verifyToken(token) as {
+      userId: string;
+      name?: string;
+      email?: string;
+    } | null;
     if (!payload) {
       return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
@@ -124,6 +129,23 @@ export async function PUT(
       runValidators: true,
     });
 
+    // Log audit
+    await logAuditAction({
+      userId: payload.userId,
+      userName: payload.name || "Admin",
+      userEmail: payload.email || "",
+      action: "update",
+      module: "members",
+      entityType: "Member",
+      entityId: id,
+      entityName: member?.name || "",
+      ipAddress:
+        request.headers.get("x-forwarded-for") ||
+        request.headers.get("x-real-ip") ||
+        "",
+      userAgent: request.headers.get("user-agent") || "",
+    });
+
     return NextResponse.json(
       {
         success: true,
@@ -155,7 +177,11 @@ export async function DELETE(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const payload = verifyToken(token);
+    const payload = verifyToken(token) as {
+      userId: string;
+      name?: string;
+      email?: string;
+    } | null;
     if (!payload) {
       return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
@@ -168,6 +194,23 @@ export async function DELETE(
     if (!member) {
       return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
+
+    // Log audit
+    await logAuditAction({
+      userId: payload.userId,
+      userName: payload.name || "Admin",
+      userEmail: payload.email || "",
+      action: "delete",
+      module: "members",
+      entityType: "Member",
+      entityId: id,
+      entityName: member?.name || "",
+      ipAddress:
+        request.headers.get("x-forwarded-for") ||
+        request.headers.get("x-real-ip") ||
+        "",
+      userAgent: request.headers.get("user-agent") || "",
+    });
 
     return NextResponse.json(
       {

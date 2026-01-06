@@ -3,6 +3,10 @@ import User from "@/models/User";
 import { verifyToken } from "@/lib/auth";
 import { parse } from "cookie";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  sendAdminCredentials,
+  sendAdminCreatedNotification,
+} from "@/lib/emailHelpers";
 
 export async function GET(_req: NextRequest) {
   try {
@@ -101,6 +105,30 @@ export async function POST(req: NextRequest) {
     // Create new user
     const user = await User.create(body);
     console.log("user========>", user);
+
+    // Send admin credentials email
+    if (password && user.email) {
+      try {
+        await sendAdminCredentials(user.name, user.email, password, user.role);
+      } catch (emailError) {
+        console.error("Failed to send admin credentials email:", emailError);
+      }
+    }
+
+    // Notify superadmin about new admin creation
+    if (currentUser.email) {
+      try {
+        await sendAdminCreatedNotification(
+          user.name,
+          user.email,
+          user.role,
+          currentUser.name,
+          currentUser.email
+        );
+      } catch (emailError) {
+        console.error("Failed to send admin notification email:", emailError);
+      }
+    }
 
     return NextResponse.json({
       success: true,

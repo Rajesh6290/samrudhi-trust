@@ -1,6 +1,7 @@
 "use client";
 import { motion, useInView } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import useSwr from "../hooks/useSwr";
 
 interface Stat {
   _id: string;
@@ -147,39 +148,53 @@ const ImpactCounter = ({
 };
 
 const RealTimeImpact = () => {
-  const [stats, setStats] = useState<Stat[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [shuffledStats, setShuffledStats] = useState<Stat[]>([]);
   const sectionRef = useRef(null);
   const isInView = useInView(sectionRef, { once: true, margin: "-100px" });
 
+  const { data: statsData, isLoading: loading } = useSwr("stats?active=true");
+  const stats: Stat[] = (statsData?.stats || []).sort(
+    (a: Stat, b: Stat) => a.order - b.order
+  );
+
+  const [displayStats, setDisplayStats] = useState<Stat[]>([]);
+  const animationTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Use a layout effect to set initial state before paint
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await fetch("/api/stats?active=true");
-        const data = await res.json();
-        const sortedStats = (data.stats || []).sort(
-          (a: Stat, b: Stat) => a.order - b.order
-        );
-        setStats(sortedStats);
+    if (stats.length === 0) return;
 
-        // Initial shuffle animation
-        const shuffled = [...sortedStats].sort(() => Math.random() - 0.5);
-        setShuffledStats(shuffled);
+    // Clear any existing timer
+    if (animationTimerRef.current) {
+      clearTimeout(animationTimerRef.current);
+    }
 
-        // After shuffle animation, sort them back
-        setTimeout(() => {
-          setShuffledStats(sortedStats);
+    // Only shuffle on initial load when displayStats is empty
+    if (displayStats.length === 0) {
+      const shuffled = [...stats].sort(() => Math.random() - 0.5);
+
+      // Use requestAnimationFrame to schedule the state update
+      requestAnimationFrame(() => {
+        setDisplayStats(shuffled);
+
+        // After animation, sort them back to proper order
+        animationTimerRef.current = setTimeout(() => {
+          setDisplayStats(stats);
         }, 1000);
-      } catch (error) {
-        console.error("Failed to fetch stats:", error);
-      } finally {
-        setLoading(false);
+      });
+    } else {
+      // Just update with new stats if already initialized
+      setDisplayStats(stats);
+    }
+
+    return () => {
+      if (animationTimerRef.current) {
+        clearTimeout(animationTimerRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stats]);
 
-    fetchStats();
-  }, []);
+  const statsToShow = displayStats.length > 0 ? displayStats : stats;
 
   return (
     <section
@@ -259,7 +274,7 @@ const RealTimeImpact = () => {
             layout
             className="grid h-fit grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
           >
-            {shuffledStats.map((stat, index) => (
+            {statsToShow.map((stat, index) => (
               <motion.div
                 key={stat._id}
                 layout

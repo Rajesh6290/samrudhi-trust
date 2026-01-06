@@ -3,7 +3,9 @@
 import AdminLayout from "@/features/layouts/AdminLayout";
 import { motion } from "framer-motion";
 import { Check, MessageSquare, Star, Trash2 } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import useSwr from "@/features/hooks/useSwr";
+import useMutation from "@/features/hooks/useMutation";
 
 interface Feedback {
   _id: string;
@@ -16,68 +18,39 @@ interface Feedback {
 }
 
 const FeedbackPage: React.FC = () => {
-  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "read" | "unread">("all");
 
-  useEffect(() => {
-    fetchFeedbacks();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter]);
+  const url =
+    filter === "all"
+      ? "admin/feedback"
+      : `admin/feedback?isRead=${filter === "read"}`;
 
-  const fetchFeedbacks = async () => {
-    try {
-      const url =
-        filter === "all"
-          ? "/api/admin/feedback"
-          : `/api/admin/feedback?isRead=${filter === "read"}`;
-
-      const response = await fetch(url, {
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setFeedbacks(data.feedbacks);
-      }
-    } catch (error) {
-      console.error("Failed to fetch feedback:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: feedbackData, isLoading: loading, mutate } = useSwr(url);
+  const feedbacks: Feedback[] = feedbackData?.feedbacks || [];
+  const { mutation } = useMutation();
 
   const handleMarkRead = async (id: string, currentStatus: boolean) => {
-    try {
-      const response = await fetch(`/api/admin/feedback/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ isRead: !currentStatus }),
-      });
+    const response = await mutation(`admin/feedback/${id}`, {
+      method: "PATCH",
+      body: { isRead: !currentStatus },
+      isAlert: true,
+    });
 
-      if (response.ok) {
-        fetchFeedbacks();
-      }
-    } catch (error) {
-      console.error("Failed to update feedback:", error);
+    if (response?.status === 200) {
+      mutate();
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this feedback?")) return;
 
-    try {
-      const response = await fetch(`/api/admin/feedback/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+    const response = await mutation(`admin/feedback/${id}`, {
+      method: "DELETE",
+      isAlert: true,
+    });
 
-      if (response.ok) {
-        fetchFeedbacks();
-      }
-    } catch (error) {
-      console.error("Failed to delete feedback:", error);
+    if (response?.status === 200) {
+      mutate();
     }
   };
 

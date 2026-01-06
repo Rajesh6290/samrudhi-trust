@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useState, useEffect } from "react";
+import useSwr from "../hooks/useSwr";
 
 interface Content {
   _id: string;
@@ -24,27 +25,11 @@ interface Content {
 }
 
 const OurStory = () => {
-  const [storyContent, setStoryContent] = useState<Content | null>(null);
-  const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
-
-  useEffect(() => {
-    const fetchStory = async () => {
-      try {
-        const res = await fetch("/api/content?key=story");
-        const data = await res.json();
-        const story = data.content.find((c: Content) => c.key === "story");
-        setStoryContent(story || null);
-      } catch (error) {
-        console.error("Failed to fetch story content:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStory();
-  }, []);
+  const { data: contentData, isLoading: loading } = useSwr("content?key=story");
+  const storyContent: Content | null =
+    contentData?.content?.find((c: Content) => c.key === "story") || null;
 
   // Auto-swap images every 4 seconds
   useEffect(() => {

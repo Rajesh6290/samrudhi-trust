@@ -1,9 +1,11 @@
 "use client";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import Drawer from "@mui/material/Drawer";
+import useSwr from "@/features/hooks/useSwr";
+import useMutation from "@/features/hooks/useMutation";
 
 interface Stat {
   _id: string;
@@ -83,8 +85,6 @@ const services = [
 ];
 
 export default function StatsPage() {
-  const [stats, setStats] = useState<Stat[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showDrawer, setShowDrawer] = useState(false);
   const [editingStat, setEditingStat] = useState<Stat | null>(null);
   const [initialValues, setInitialValues] = useState({
@@ -95,61 +95,43 @@ export default function StatsPage() {
     isActive: true,
   });
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  const fetchStats = async () => {
-    try {
-      const res = await fetch("/api/stats");
-      const data = await res.json();
-      setStats(data.stats || []);
-    } catch (error) {
-      console.error("Failed to fetch stats:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: statsData, isLoading: loading, mutate } = useSwr("stats");
+  const stats: Stat[] = statsData?.stats || [];
+  const { mutation } = useMutation();
 
   const handleSubmit = async (
     values: any,
     { setSubmitting, resetForm }: any
   ) => {
-    try {
-      const refTitle =
-        services.find((s) => s.subtitle === values.title)?.title ||
-        values.title;
-      const url = editingStat ? `/api/stats/${editingStat._id}` : "/api/stats";
-      const method = editingStat ? "PUT" : "POST";
+    const refTitle =
+      services.find((s) => s.subtitle === values.title)?.title || values.title;
+    const path = editingStat ? `stats/${editingStat._id}` : "stats";
+    const method = editingStat ? "PUT" : "POST";
 
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...values, ref: refTitle }),
-      });
+    const response = await mutation(path, {
+      method,
+      body: { ...values, ref: refTitle },
+      isAlert: true,
+    });
 
-      if (res.ok) {
-        fetchStats();
-        handleCloseDrawer();
-        resetForm();
-      }
-    } catch (error) {
-      console.error("Failed to save stat:", error);
-    } finally {
-      setSubmitting(false);
+    if (response?.status === 200 || response?.status === 201) {
+      mutate();
+      handleCloseDrawer();
+      resetForm();
     }
+    setSubmitting(false);
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this stat?")) return;
 
-    try {
-      const res = await fetch(`/api/stats/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        fetchStats();
-      }
-    } catch (error) {
-      console.error("Failed to delete stat:", error);
+    const response = await mutation(`stats/${id}`, {
+      method: "DELETE",
+      isAlert: true,
+    });
+
+    if (response?.status === 200) {
+      mutate();
     }
   };
 

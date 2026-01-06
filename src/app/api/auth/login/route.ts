@@ -1,4 +1,5 @@
 import { generateToken } from "@/lib/auth";
+import { logAuditAction } from "@/lib/auditLogger";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 import { serialize } from "cookie";
@@ -96,6 +97,23 @@ export async function POST(request: NextRequest) {
     );
 
     response.headers.set("Set-Cookie", cookie);
+
+    // Log audit
+    await logAuditAction({
+      userId: user._id.toString(),
+      userName: user.name || "",
+      userEmail: user.email,
+      action: "login",
+      module: "auth",
+      entityType: "User",
+      entityId: user._id.toString(),
+      entityName: user.name || user.email,
+      ipAddress:
+        request.headers.get("x-forwarded-for") ||
+        request.headers.get("x-real-ip") ||
+        "",
+      userAgent: request.headers.get("user-agent") || "",
+    });
 
     return response;
   } catch (error) {

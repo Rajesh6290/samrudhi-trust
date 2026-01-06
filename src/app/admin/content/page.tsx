@@ -1,6 +1,9 @@
 "use client";
+import useMutation from "@/features/hooks/useMutation";
+import useSwr from "@/features/hooks/useSwr";
 import { X } from "lucide-react";
-import { useEffect, useState } from "react";
+import Image from "next/image";
+import { useState } from "react";
 
 interface Content {
   _id: string;
@@ -12,49 +15,28 @@ interface Content {
 }
 
 export default function ContentPage() {
-  const [aboutContent, setAboutContent] = useState<Content | null>(null);
-  const [storyContent, setStoryContent] = useState<Content | null>(null);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"about" | "story">("about");
   const [uploading, setUploading] = useState(false);
 
-  const [formData, setFormData] = useState({
-    title: "",
-    content: "",
-    images: [] as string[],
-  });
+  const { data: contentData, isLoading: loading, mutate } = useSwr("content");
+  const { mutation } = useMutation();
 
-  useEffect(() => {
-    fetchContent();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const aboutContent: Content | null =
+    contentData?.content?.find((c: Content) => c.key === "about") || null;
+  const storyContent: Content | null =
+    contentData?.content?.find((c: Content) => c.key === "story") || null;
 
-  const fetchContent = async () => {
-    try {
-      const res = await fetch("/api/content");
-      const data = await res.json();
+  const activeContent = activeTab === "about" ? aboutContent : storyContent;
 
-      const about = data.content.find((c: Content) => c.key === "about");
-      const story = data.content.find((c: Content) => c.key === "story");
-
-      setAboutContent(about || null);
-      setStoryContent(story || null);
-
-      // Set form data for active tab
-      const activeContent = activeTab === "about" ? about : story;
-      if (activeContent) {
-        setFormData({
+  const [formData, setFormData] = useState(() =>
+    activeContent
+      ? {
           title: activeContent.title || "",
           content: activeContent.content || "",
           images: activeContent.images || [],
-        });
-      }
-    } catch (error) {
-      console.error("Failed to fetch content:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+        }
+      : { title: "", content: "", images: [] as string[] }
+  );
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -64,21 +46,20 @@ export default function ContentPage() {
     const uploadFormData = new FormData();
     uploadFormData.append("file", file);
 
-    try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: uploadFormData,
-      });
+    const response = await mutation("upload", {
+      method: "POST",
+      body: uploadFormData,
+      isFormData: true,
+      isAlert: false,
+    });
 
-      const data = await res.json();
-      if (data.url) {
-        setFormData({ ...formData, images: [...formData.images, data.url] });
-      }
-    } catch (error) {
-      console.error("Failed to upload image:", error);
-    } finally {
-      setUploading(false);
+    if (response?.status === 200 && response?.results?.url) {
+      setFormData({
+        ...formData,
+        images: [...formData.images, response.results.url],
+      });
     }
+    setUploading(false);
   };
 
   const handleRemoveImage = (index: number) => {
@@ -91,30 +72,26 @@ export default function ContentPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    try {
-      const res = await fetch("/api/content", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          key: activeTab,
-          title: formData.title,
-          content: formData.content,
-          images: formData.images,
-        }),
-      });
+    const response = await mutation("content", {
+      method: "POST",
+      body: {
+        key: activeTab,
+        title: formData.title,
+        content: formData.content,
+        images: formData.images,
+      },
+      isAlert: false,
+    });
 
-      if (res.ok) {
-        alert("Content saved successfully!");
-        fetchContent();
-      }
-    } catch (error) {
-      console.error("Failed to save content:", error);
+    if (response?.status === 200 || response?.status === 201) {
+      alert("Content saved successfully!");
+      mutate();
     }
   };
 
   const handleTabChange = (tab: "about" | "story") => {
-    setActiveTab(tab);
     const content = tab === "about" ? aboutContent : storyContent;
+    setActiveTab(tab);
     if (content) {
       setFormData({
         title: content.title || "",
@@ -207,9 +184,11 @@ export default function ContentPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {formData.images.map((img, index) => (
                   <div key={index} className="relative group">
-                    <img
+                    <Image
                       src={img}
                       alt={`Image ${index + 1}`}
+                      width={300}
+                      height={128}
                       className="w-full h-32 object-cover rounded-xl"
                     />
                     <button

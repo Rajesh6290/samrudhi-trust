@@ -13,6 +13,8 @@ import {
   ArrowLeft,
   BookOpen,
   Tag,
+  MessageSquare,
+  Send,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -60,6 +62,10 @@ export default function BlogPost() {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [hasLiked, setHasLiked] = useState(false);
   const [currentLikes, setCurrentLikes] = useState(0);
+  const [commentName, setCommentName] = useState("");
+  const [commentEmail, setCommentEmail] = useState("");
+  const [commentContent, setCommentContent] = useState("");
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
   const { mutation } = useMutation();
 
@@ -75,6 +81,12 @@ export default function BlogPost() {
   );
   const allBlogs: Blog[] = relatedData?.blogs || [];
   const relatedBlogs = allBlogs.filter((b) => b._id !== blog?._id).slice(0, 3);
+
+  // Fetch blog comments
+  const { data: commentsData, mutate: mutateComments } = useSwr(
+    blog ? `blog-comments?blogId=${blog._id}&status=approved` : null
+  );
+  const comments = commentsData?.comments || [];
 
   useEffect(() => {
     if (blog) {
@@ -158,6 +170,59 @@ export default function BlogPost() {
 
     window.open(shareUrls[platform], "_blank", "width=600,height=400");
     setShowShareMenu(false);
+  };
+
+  const handleCommentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!commentName || !commentEmail || !commentContent) {
+      Swal.fire({
+        icon: "error",
+        title: "Missing Fields",
+        text: "Please fill in all fields",
+      });
+      return;
+    }
+
+    setIsSubmittingComment(true);
+
+    try {
+      const response = await mutation("blog-comments", {
+        method: "POST",
+        body: {
+          blogId: blog?._id,
+          blogSlug: blog?.slug,
+          userName: commentName,
+          userEmail: commentEmail,
+          comment: commentContent,
+          status: "pending",
+        },
+        isAlert: false,
+      });
+
+      if (response?.results?.success) {
+        Swal.fire({
+          icon: "success",
+          title: "Comment Submitted!",
+          text: "Your comment is pending moderation and will appear soon.",
+          timer: 3000,
+        });
+        setCommentName("");
+        setCommentEmail("");
+        setCommentContent("");
+        mutateComments();
+      } else {
+        throw new Error("Failed to submit comment");
+      }
+    } catch {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to submit comment. Please try again.",
+      });
+    } finally {
+      setIsSubmittingComment(false);
+    }
   };
 
   if (isLoading) {
@@ -615,6 +680,142 @@ export default function BlogPost() {
                 <span>Share Article</span>
               </button>
             </div>
+          </motion.div>
+
+          {/* Comments Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="mt-16"
+          >
+            <h2 className="text-3xl font-bold text-gray-900 mb-8 flex items-center gap-3">
+              <MessageSquare size={32} className="text-blue-600" />
+              Comments ({comments.length})
+            </h2>
+
+            {/* Comment Form */}
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 mb-8">
+              <h3 className="text-xl font-bold text-gray-900 mb-6">
+                Leave a Comment
+              </h3>
+              <form onSubmit={handleCommentSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={commentName}
+                      onChange={(e) => setCommentName(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                      placeholder="Your name"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      value={commentEmail}
+                      onChange={(e) => setCommentEmail(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                      placeholder="your@email.com"
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Comment *
+                  </label>
+                  <textarea
+                    value={commentContent}
+                    onChange={(e) => setCommentContent(e.target.value)}
+                    rows={5}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
+                    placeholder="Share your thoughts..."
+                    required
+                  ></textarea>
+                </div>
+                <button
+                  type="submit"
+                  disabled={isSubmittingComment}
+                  className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  <Send size={18} />
+                  {isSubmittingComment ? "Submitting..." : "Post Comment"}
+                </button>
+                <p className="text-sm text-gray-500">
+                  Your comment will be moderated before appearing on the site.
+                </p>
+              </form>
+            </div>
+
+            {/* Comments List */}
+            {comments.length > 0 ? (
+              <div className="space-y-6">
+                {comments.map(
+                  (comment: {
+                    _id: string;
+                    userName: string;
+                    createdAt: string;
+                    comment: string;
+                  }) => (
+                    <div
+                      key={comment._id}
+                      className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg shrink-0">
+                          {comment.userName.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <div>
+                              <h4 className="font-bold text-gray-900">
+                                {comment.userName}
+                              </h4>
+                              <p className="text-sm text-gray-500">
+                                {new Date(comment.createdAt).toLocaleDateString(
+                                  "en-US",
+                                  {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <p className="text-gray-700 leading-relaxed">
+                            {comment.comment}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
+                <MessageSquare
+                  size={48}
+                  className="text-gray-300 mx-auto mb-4"
+                />
+                <h3 className="text-xl font-bold text-gray-800 mb-2">
+                  No Comments Yet
+                </h3>
+                <p className="text-gray-600">
+                  Be the first to share your thoughts!
+                </p>
+              </div>
+            )}
           </motion.div>
 
           {/* Related Blogs */}

@@ -4,9 +4,11 @@ import { Heart, Users, Clock, CheckCircle, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
+import useMutation from "../hooks/useMutation";
 
 const VolunteerSection = () => {
   const [submitted, setSubmitted] = useState(false);
+  const { mutation } = useMutation();
 
   const interestOptions = [
     "Food Distribution",
@@ -51,23 +53,19 @@ const VolunteerSection = () => {
     values: typeof initialValues,
     { setSubmitting, resetForm }: any
   ) => {
-    try {
-      const response = await fetch("/api/volunteers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      });
+    const response = await mutation("volunteers", {
+      method: "POST",
+      body: values,
+      isAlert: true,
+    });
 
-      if (response.ok) {
-        setSubmitted(true);
-        resetForm();
-      }
-    } catch (error) {
-      console.error("Failed to submit volunteer application:", error);
+    if (response?.status === 200 || response?.status === 201) {
+      setSubmitted(true);
+      resetForm();
+    } else {
       alert("Failed to submit application. Please try again.");
-    } finally {
-      setSubmitting(false);
     }
+    setSubmitting(false);
   };
 
   const FADE_UP = {

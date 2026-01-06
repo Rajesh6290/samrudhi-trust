@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Quote, Star, ChevronLeft, ChevronRight, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import useSwr from "../hooks/useSwr";
 
 interface Testimonial {
   _id: string;
@@ -15,32 +16,14 @@ interface Testimonial {
 }
 
 const Testimonials = () => {
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
-  const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [cardsPerView, setCardsPerView] = useState(1);
-
-  useEffect(() => {
-    fetchTestimonials();
-  }, []);
-
-  const fetchTestimonials = async () => {
-    try {
-      const response = await fetch("/api/testimonials?active=true");
-      if (response.ok) {
-        const data = await response.json();
-        // Sort by order field
-        const sorted = data.testimonials.sort(
-          (a: Testimonial, b: Testimonial) => a.order - b.order
-        );
-        setTestimonials(sorted);
-      }
-    } catch (error) {
-      console.error("Failed to fetch testimonials:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: testimonialsData, isLoading: loading } = useSwr(
+    "testimonials?active=true"
+  );
+  const testimonials: Testimonial[] = (
+    testimonialsData?.testimonials || []
+  ).sort((a: Testimonial, b: Testimonial) => a.order - b.order);
 
   useEffect(() => {
     const updateCardsPerView = () => {

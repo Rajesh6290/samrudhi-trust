@@ -4,6 +4,7 @@ import Razorpay from "razorpay";
 import connectDB from "@/lib/mongodb";
 import Payment from "@/models/Payment";
 import { verifyToken } from "@/lib/auth";
+import { sendPaymentSuccessEmail } from "@/lib/emailHelpers";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -95,6 +96,29 @@ export async function POST(request: NextRequest) {
           payment.paymentDate = new Date(razorpayPayment.created_at * 1000);
 
           await payment.save();
+
+          // Send payment success email with PDF attachments
+          try {
+            await sendPaymentSuccessEmail({
+              orderId: payment.razorpayOrderId || "",
+              paymentId: razorpayPaymentId,
+              amount: payment.amount,
+              currency: razorpayPayment.currency || "INR",
+              donorName: payment.donorName || "Donor",
+              donorEmail: payment.donorEmail || "",
+              donorPhone: payment.donorPhone || "",
+              purpose: payment.notes || "Donation",
+              paymentMethod: razorpayPayment.method || "online",
+              transactionDate: new Date(
+                razorpayPayment.created_at * 1000
+              ).toLocaleDateString(),
+              receiptNumber: payment.invoiceNumber || "",
+              tax80G: payment.needs80G,
+            });
+          } catch (emailError) {
+            console.error("Failed to send payment email:", emailError);
+            // Continue even if email fails
+          }
 
           return NextResponse.json({
             success: true,

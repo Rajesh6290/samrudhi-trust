@@ -89,37 +89,32 @@ export default function AdminProfilePage() {
 
     setUploadingImage(true);
 
-    const formData = new FormData();
-    formData.append("file", file);
+    const uploadFormData = new FormData();
+    uploadFormData.append("file", file);
 
-    try {
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
+    const response = await updateProfile("upload", {
+      method: "POST",
+      body: uploadFormData,
+      isFormData: true,
+      isAlert: false,
+    });
+
+    if (response?.results?.success && response?.results?.url) {
+      setFormData((prev) => ({ ...prev, photo: response.results.url }));
+      Swal.fire({
+        title: "Success",
+        text: "Image uploaded successfully",
+        icon: "success",
+        timer: 2000,
       });
-
-      const data = await response.json();
-
-      if (data.success && data.url) {
-        setFormData((prev) => ({ ...prev, photo: data.url }));
-        Swal.fire({
-          title: "Success",
-          text: "Image uploaded successfully",
-          icon: "success",
-          timer: 2000,
-        });
-      } else {
-        throw new Error(data.error || "Upload failed");
-      }
-    } catch (_error) {
+    } else {
       Swal.fire({
         title: "Error",
         text: "Failed to upload image",
         icon: "error",
       });
-    } finally {
-      setUploadingImage(false);
     }
+    setUploadingImage(false);
   };
 
   const handleProfileUpdate = async (e: React.FormEvent) => {

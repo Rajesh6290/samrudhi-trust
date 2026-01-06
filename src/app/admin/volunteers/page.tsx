@@ -1,7 +1,9 @@
 "use client";
 import { Trash2, Eye, Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Drawer } from "@mui/material";
+import useSwr from "@/features/hooks/useSwr";
+import useMutation from "@/features/hooks/useMutation";
 
 interface Volunteer {
   _id: string;
@@ -17,53 +19,39 @@ interface Volunteer {
 }
 
 export default function VolunteersAdminPage() {
-  const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
-  const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [viewVolunteer, setViewVolunteer] = useState<Volunteer | null>(null);
 
-  useEffect(() => {
-    fetchVolunteers();
-  }, []);
-
-  const fetchVolunteers = async () => {
-    try {
-      const res = await fetch("/api/volunteers");
-      const data = await res.json();
-      setVolunteers(data.volunteers || []);
-    } catch (error) {
-      console.error("Failed to fetch volunteers:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    data: volunteersData,
+    isLoading: loading,
+    mutate,
+  } = useSwr("volunteers");
+  const volunteers: Volunteer[] = volunteersData?.volunteers || [];
+  const { mutation } = useMutation();
 
   const handleStatusUpdate = async (id: string, newStatus: string) => {
-    try {
-      const res = await fetch(`/api/volunteers/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
+    const response = await mutation(`volunteers/${id}`, {
+      method: "PUT",
+      body: { status: newStatus },
+      isAlert: true,
+    });
 
-      if (res.ok) {
-        fetchVolunteers();
-      }
-    } catch (error) {
-      console.error("Failed to update status:", error);
+    if (response?.status === 200) {
+      mutate();
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this volunteer?")) return;
 
-    try {
-      const res = await fetch(`/api/volunteers/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        fetchVolunteers();
-      }
-    } catch (error) {
-      console.error("Failed to delete volunteer:", error);
+    const response = await mutation(`volunteers/${id}`, {
+      method: "DELETE",
+      isAlert: true,
+    });
+
+    if (response?.status === 200) {
+      mutate();
     }
   };
 
@@ -187,7 +175,7 @@ export default function VolunteersAdminPage() {
         {viewVolunteer && (
           <div className="h-full flex flex-col">
             {/* Drawer Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-emerald-600 to-emerald-700">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-linear-to-r from-emerald-600 to-emerald-700">
               <h2 className="text-2xl font-bold text-white">
                 Volunteer Details
               </h2>
@@ -295,7 +283,7 @@ export default function VolunteersAdminPage() {
                   setDrawerOpen(false);
                   setViewVolunteer(null);
                 }}
-                className="w-full px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-semibold rounded-lg hover:from-emerald-700 hover:to-emerald-800 transition-colors shadow-lg"
+                className="w-full px-6 py-3 bg-linear-to-r from-emerald-600 to-emerald-700 text-white font-semibold rounded-lg hover:from-emerald-700 hover:to-emerald-800 transition-colors shadow-lg"
               >
                 Close
               </button>

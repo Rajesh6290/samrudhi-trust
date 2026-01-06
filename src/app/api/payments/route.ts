@@ -10,6 +10,8 @@ export async function GET(req: NextRequest) {
     const memberId = searchParams.get("memberId");
     const month = searchParams.get("month");
     const status = searchParams.get("status");
+    const paymentType = searchParams.get("paymentType");
+    const needs80G = searchParams.get("needs80G");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
 
@@ -36,6 +38,14 @@ export async function GET(req: NextRequest) {
 
     if (status) {
       query.status = status;
+    }
+
+    if (paymentType) {
+      query.paymentType = paymentType;
+    }
+
+    if (needs80G === "true") {
+      query.needs80G = true;
     }
 
     const skip = (page - 1) * limit;

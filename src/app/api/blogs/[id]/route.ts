@@ -1,8 +1,16 @@
 import dbConnect from "@/lib/mongodb";
+import { logAuditAction } from "@/lib/auditLogger";
+import { verifyToken } from "@/lib/auth";
 import Blog from "@/models/Blog";
 import { MediaService } from "@/lib/mediaService";
 import { parse } from "cookie";
 import { NextRequest, NextResponse } from "next/server";
+
+interface TokenPayload {
+  userId: string;
+  name?: string;
+  email?: string;
+}
 
 // Auto-calculate reading time based on content (200 words per minute)
 function calculateReadTime(content: string): number {
@@ -129,6 +137,26 @@ export async function PUT(
 
     await blog.save();
 
+    // Log audit
+    const payload = verifyToken(token) as TokenPayload | null;
+    if (payload) {
+      await logAuditAction({
+        userId: payload.userId,
+        userName: payload.name || "Admin",
+        userEmail: payload.email || "",
+        action: "update",
+        module: "blogs",
+        entityType: "Blog",
+        entityId: id,
+        entityName: blog.title,
+        ipAddress:
+          request.headers.get("x-forwarded-for") ||
+          request.headers.get("x-real-ip") ||
+          "",
+        userAgent: request.headers.get("user-agent") || "",
+      });
+    }
+
     return NextResponse.json({ blog });
   } catch (error: unknown) {
     console.error("Update blog error:", error);
@@ -180,6 +208,26 @@ export async function DELETE(
     }
 
     await Blog.findByIdAndDelete(id);
+
+    // Log audit
+    const payload = verifyToken(token) as TokenPayload | null;
+    if (payload) {
+      await logAuditAction({
+        userId: payload.userId,
+        userName: payload.name || "Admin",
+        userEmail: payload.email || "",
+        action: "delete",
+        module: "blogs",
+        entityType: "Blog",
+        entityId: id,
+        entityName: blog.title,
+        ipAddress:
+          request.headers.get("x-forwarded-for") ||
+          request.headers.get("x-real-ip") ||
+          "",
+        userAgent: request.headers.get("user-agent") || "",
+      });
+    }
 
     return NextResponse.json({ message: "Blog deleted successfully" });
   } catch (error: unknown) {

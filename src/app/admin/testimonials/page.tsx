@@ -3,7 +3,9 @@
 import { motion } from "framer-motion";
 import { Edit, Plus, Star, Trash2, Upload, User, X } from "lucide-react";
 import Image from "next/image";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import useSwr from "@/features/hooks/useSwr";
+import useMutation from "@/features/hooks/useMutation";
 
 interface Testimonial {
   _id: string;
@@ -18,8 +20,6 @@ interface Testimonial {
 }
 
 const TestimonialsPage: React.FC = () => {
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -33,72 +33,50 @@ const TestimonialsPage: React.FC = () => {
     isActive: true,
   });
 
-  useEffect(() => {
-    fetchTestimonials();
-  }, []);
-
-  const fetchTestimonials = async () => {
-    try {
-      const response = await fetch("/api/testimonials");
-      if (response.ok) {
-        const data = await response.json();
-        setTestimonials(data.testimonials);
-      }
-    } catch (error) {
-      console.error("Failed to fetch testimonials:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    data: testimonialsData,
+    isLoading: loading,
+    mutate,
+  } = useSwr("testimonials");
+  const testimonials: Testimonial[] = testimonialsData?.testimonials || [];
+  const { mutation } = useMutation();
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploading(true);
-    try {
-      const formDataUpload = new FormData();
-      formDataUpload.append("file", file);
+    const formDataUpload = new FormData();
+    formDataUpload.append("file", file);
 
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        credentials: "include",
-        body: formDataUpload,
-      });
+    const response = await mutation("upload", {
+      method: "POST",
+      body: formDataUpload,
+      isFormData: true,
+      isAlert: false,
+    });
 
-      if (response.ok) {
-        const data = await response.json();
-        setFormData((prev) => ({ ...prev, image: data.url }));
-      }
-    } catch (error) {
-      console.error("Upload failed:", error);
-    } finally {
-      setUploading(false);
+    if (response?.status === 200) {
+      setFormData((prev) => ({ ...prev, image: response.results.url }));
     }
+    setUploading(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    try {
-      const url = editingId
-        ? `/api/testimonials/${editingId}`
-        : "/api/testimonials";
-      const method = editingId ? "PUT" : "POST";
+    const path = editingId ? `testimonials/${editingId}` : "testimonials";
+    const method = editingId ? "PUT" : "POST";
 
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(formData),
-      });
+    const response = await mutation(path, {
+      method,
+      body: formData,
+      isAlert: true,
+    });
 
-      if (response.ok) {
-        fetchTestimonials();
-        handleCloseModal();
-      }
-    } catch (error) {
-      console.error("Failed to save testimonial:", error);
+    if (response?.status === 200 || response?.status === 201) {
+      mutate();
+      handleCloseModal();
     }
   };
 
@@ -119,17 +97,13 @@ const TestimonialsPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this testimonial?")) return;
 
-    try {
-      const response = await fetch(`/api/testimonials/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+    const response = await mutation(`testimonials/${id}`, {
+      method: "DELETE",
+      isAlert: true,
+    });
 
-      if (response.ok) {
-        fetchTestimonials();
-      }
-    } catch (error) {
-      console.error("Failed to delete testimonial:", error);
+    if (response?.status === 200) {
+      mutate();
     }
   };
 
@@ -309,7 +283,7 @@ const TestimonialsPage: React.FC = () => {
                 </label>
                 <div className="flex items-center gap-4">
                   {/* Preview */}
-                  <div className="relative w-24 h-24 rounded-full overflow-hidden ring-4 ring-orange-100 bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shrink-0">
+                  <div className="relative w-24 h-24 rounded-full overflow-hidden ring-4 ring-orange-100 bg-linear-to-br from-orange-500 to-amber-500 flex items-center justify-center shrink-0">
                     {formData.image ? (
                       <Image
                         src={formData.image}

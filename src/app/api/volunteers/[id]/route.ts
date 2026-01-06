@@ -1,4 +1,6 @@
 import dbConnect from "@/lib/mongodb";
+import { logAuditAction } from "@/lib/auditLogger";
+import { verifyToken } from "@/lib/auth";
 import Volunteer from "@/models/Volunteer";
 import { parse } from "cookie";
 import { NextRequest, NextResponse } from "next/server";
@@ -57,6 +59,26 @@ export async function PUT(
       );
     }
 
+    // Log audit
+    const payload = verifyToken(token);
+    if (payload) {
+      await logAuditAction({
+        userId: payload.userId,
+        userName: payload.name || "Admin",
+        userEmail: payload.email || "",
+        action: "update",
+        module: "volunteers",
+        entityType: "Volunteer",
+        entityId: id,
+        entityName: volunteer.name,
+        ipAddress:
+          request.headers.get("x-forwarded-for") ||
+          request.headers.get("x-real-ip") ||
+          "",
+        userAgent: request.headers.get("user-agent") || "",
+      });
+    }
+
     return NextResponse.json({ volunteer });
   } catch (error: unknown) {
     console.error("Update volunteer error:", error);
@@ -88,6 +110,26 @@ export async function DELETE(
         { error: "Volunteer not found" },
         { status: 404 }
       );
+    }
+
+    // Log audit
+    const payload = verifyToken(token);
+    if (payload) {
+      await logAuditAction({
+        userId: payload.userId,
+        userName: payload.name || "Admin",
+        userEmail: payload.email || "",
+        action: "delete",
+        module: "volunteers",
+        entityType: "Volunteer",
+        entityId: id,
+        entityName: volunteer.name,
+        ipAddress:
+          request.headers.get("x-forwarded-for") ||
+          request.headers.get("x-real-ip") ||
+          "",
+        userAgent: request.headers.get("user-agent") || "",
+      });
     }
 
     return NextResponse.json({ message: "Volunteer deleted successfully" });

@@ -113,7 +113,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.variable} antialiased`}>
+      <body className={`${inter.variable} antialiased text-gray-900`}>
         <ToastContainer
           position="top-right"
           autoClose={2000}

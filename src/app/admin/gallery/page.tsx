@@ -1,6 +1,7 @@
 "use client";
 
 import useSwr from "@/features/hooks/useSwr";
+import useMutation from "@/features/hooks/useMutation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Calendar,
@@ -14,7 +15,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 
 interface GalleryFile {
   id: string;
@@ -374,8 +375,6 @@ const categories = [
 ];
 
 const GalleryPage: React.FC = () => {
-  const [items, setItems] = useState<GalleryItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -383,8 +382,10 @@ const GalleryPage: React.FC = () => {
   const [editingItem, setEditingItem] = useState<GalleryItem | null>(null);
   const [uploading, setUploading] = useState(false);
   const [pdfPreview, setPdfPreview] = useState<string | null>(null);
-  const { data } = useSwr("services");
-  console.log(data);
+  const { data, mutate, isLoading } = useSwr("gallery");
+  const { mutation } = useMutation();
+
+  const items = (data?.items || []) as GalleryItem[];
   const [formData, setFormData] = useState({
     category: "food-distribution-poor",
     date: new Date().toISOString().split("T")[0],
@@ -392,33 +393,6 @@ const GalleryPage: React.FC = () => {
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [filePreviews, setFilePreviews] = useState<string[]>([]);
-
-  useEffect(() => {
-    fetchGallery();
-  }, [category, startDate, endDate]);
-
-  const fetchGallery = async () => {
-    try {
-      const params = new URLSearchParams();
-      if (category !== "all") params.append("category", category);
-      params.append("limit", "100");
-      if (startDate) params.append("startDate", startDate);
-      if (endDate) params.append("endDate", endDate);
-
-      const response = await fetch(`/api/gallery?${params.toString()}`, {
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setItems(data.items || []);
-      }
-    } catch (error) {
-      console.error("Failed to fetch gallery:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Generate random title and description based on category
   const generateContent = (categoryValue: string) => {
@@ -512,25 +486,23 @@ const GalleryPage: React.FC = () => {
         formDataToSend.append(`file_${index}`, file);
       });
 
-      const url = editingItem
-        ? `/api/gallery/${editingItem._id}`
-        : "/api/gallery";
+      const path = editingItem ? `gallery/${editingItem._id}` : "gallery";
       const method = editingItem ? "PUT" : "POST";
 
-      const response = await fetch(url, {
+      const response = await mutation(path, {
         method,
-        credentials: "include",
         body: formDataToSend,
+        isFormData: true,
+        isAlert: false,
       });
 
-      if (response.ok) {
+      if (response?.status === 200 || response?.status === 201) {
         setShowDrawer(false);
         setEditingItem(null);
         resetForm();
-        fetchGallery();
+        mutate();
       } else {
-        const error = await response.json();
-        alert(error.error || "Failed to save gallery item");
+        alert(response?.results?.error || "Failed to save gallery item");
       }
     } catch (error) {
       console.error("Failed to save gallery item:", error);
@@ -543,17 +515,13 @@ const GalleryPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this item?")) return;
 
-    try {
-      const response = await fetch(`/api/gallery/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+    const response = await mutation(`gallery/${id}`, {
+      method: "DELETE",
+      isAlert: true,
+    });
 
-      if (response.ok) {
-        fetchGallery();
-      }
-    } catch (error) {
-      console.error("Failed to delete item:", error);
+    if (response?.status === 200) {
+      mutate();
     }
   };
 
@@ -850,7 +818,7 @@ const GalleryPage: React.FC = () => {
         </motion.div>
 
         {/* Gallery Grid */}
-        {loading ? (
+        {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
               <div

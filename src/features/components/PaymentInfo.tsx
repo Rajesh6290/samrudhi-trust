@@ -11,9 +11,10 @@ import {
   Building2,
   ArrowRight,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import useSwr from "../hooks/useSwr";
 
 interface SiteSettings {
   bankName: string;
@@ -26,27 +27,9 @@ interface SiteSettings {
 }
 
 const PaymentInfo = () => {
-  const [settings, setSettings] = useState<SiteSettings | null>(null);
-  const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState("");
-
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
-    try {
-      const response = await fetch("/api/settings");
-      if (response.ok) {
-        const data = await response.json();
-        setSettings(data.settings);
-      }
-    } catch (error) {
-      console.error("Failed to fetch settings:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: settingsData, isLoading: loading } = useSwr("settings");
+  const settings: SiteSettings | null = settingsData?.settings || null;
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);

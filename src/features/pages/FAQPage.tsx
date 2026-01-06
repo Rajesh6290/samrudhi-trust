@@ -1,7 +1,8 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import DefaultLayouts from "../layouts/DefaultLayouts";
 import BackgroundSlider from "../components/BackgroundSlider";
+import useSwr from "../hooks/useSwr";
 import {
   ChevronDown,
   HelpCircle,
@@ -19,28 +20,11 @@ interface FAQItem {
 }
 
 const FAQPage = () => {
-  const [faqData, setFaqData] = useState<FAQItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("All");
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
-  useEffect(() => {
-    fetchFAQs();
-  }, []);
-
-  const fetchFAQs = async () => {
-    try {
-      const response = await fetch("/api/faqs");
-      if (response.ok) {
-        const data = await response.json();
-        setFaqData(data.faqs);
-      }
-    } catch (error) {
-      console.error("Failed to fetch FAQs:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: faqResponse, isLoading: loading } = useSwr("faqs");
+  const faqData: FAQItem[] = faqResponse?.faqs || [];
 
   const categories = [
     "All",

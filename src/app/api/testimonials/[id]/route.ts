@@ -1,4 +1,5 @@
 import { verifyToken } from "@/lib/auth";
+import { logAuditAction } from "@/lib/auditLogger";
 import connectDB from "@/lib/mongodb";
 import Testimonial from "@/models/Testimonial";
 import { parse } from "cookie";
@@ -37,6 +38,23 @@ export async function PUT(
         { status: 404 }
       );
     }
+
+    // Log audit
+    await logAuditAction({
+      userId: payload.userId,
+      userName: payload.name || "Admin",
+      userEmail: payload.email || "",
+      action: "update",
+      module: "testimonials",
+      entityType: "Testimonial",
+      entityId: id,
+      entityName: testimonial.name,
+      ipAddress:
+        request.headers.get("x-forwarded-for") ||
+        request.headers.get("x-real-ip") ||
+        "",
+      userAgent: request.headers.get("user-agent") || "",
+    });
 
     return NextResponse.json(
       {
@@ -83,6 +101,23 @@ export async function DELETE(
         { status: 404 }
       );
     }
+
+    // Log audit
+    await logAuditAction({
+      userId: payload.userId,
+      userName: payload.name || "Admin",
+      userEmail: payload.email || "",
+      action: "delete",
+      module: "testimonials",
+      entityType: "Testimonial",
+      entityId: id,
+      entityName: testimonial.name,
+      ipAddress:
+        request.headers.get("x-forwarded-for") ||
+        request.headers.get("x-real-ip") ||
+        "",
+      userAgent: request.headers.get("user-agent") || "",
+    });
 
     return NextResponse.json(
       {

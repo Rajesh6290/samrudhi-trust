@@ -3,6 +3,8 @@ import Campaign from "@/models/Campaign";
 import { MediaService } from "@/lib/mediaService";
 import { parse } from "cookie";
 import { NextRequest, NextResponse } from "next/server";
+import { sendCampaignLaunchEmail } from "@/lib/emailHelpers";
+import NewsletterSubscriber from "@/models/NewsletterSubscriber";
 
 export async function GET(request: NextRequest) {
   try {
@@ -94,7 +96,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const campaignData: any = {
+    const campaignData: Record<string, unknown> = {
       title,
       description,
       image: imageUrl,
@@ -120,6 +122,29 @@ export async function POST(request: NextRequest) {
     }
 
     const campaign = await Campaign.create(campaignData);
+
+    // Send campaign launch email to active subscribers if campaign is active
+    if (campaign.isActive === "yes") {
+      try {
+        const subscribers = await NewsletterSubscriber.find({
+          status: "active",
+        }).select("email");
+        const emails = subscribers.map((s) => s.email).filter(Boolean);
+
+        if (emails.length > 0) {
+          await sendCampaignLaunchEmail(
+            emails,
+            campaign.title,
+            campaign.description || "",
+            0, // target amount - campaigns don't have this field
+            campaign.endDate ? campaign.endDate.toLocaleDateString() : "",
+            campaign.image
+          );
+        }
+      } catch (emailError) {
+        console.error("Failed to send campaign launch emails:", emailError);
+      }
+    }
 
     return NextResponse.json({ campaign }, { status: 201 });
   } catch (error: unknown) {

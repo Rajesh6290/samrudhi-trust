@@ -1,9 +1,11 @@
 import { verifyToken } from "@/lib/auth";
+import { logAuditAction } from "@/lib/auditLogger";
 import { MediaService } from "@/lib/mediaService";
 import connectDB from "@/lib/mongodb";
 import Member from "@/models/Member";
 import { parse } from "cookie";
 import { NextRequest, NextResponse } from "next/server";
+import { notifyNewMember } from "@/lib/notificationService";
 
 // GET all members
 export async function GET(request: NextRequest) {
@@ -152,6 +154,26 @@ export async function POST(request: NextRequest) {
       isActive: true,
       bio,
     });
+
+    // Log audit
+    await logAuditAction({
+      userId: payload.userId,
+      userName: payload.name || "Admin",
+      userEmail: payload.email || "",
+      action: "create",
+      module: "members",
+      entityType: "Member",
+      entityId: member._id.toString(),
+      entityName: member.name,
+      ipAddress:
+        request.headers.get("x-forwarded-for") ||
+        request.headers.get("x-real-ip") ||
+        "",
+      userAgent: request.headers.get("user-agent") || "",
+    });
+
+    // Create notification for new member
+    await notifyNewMember(member.name, member.email, member._id.toString());
 
     return NextResponse.json(
       {

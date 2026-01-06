@@ -1,4 +1,5 @@
 import { verifyToken } from "@/lib/auth";
+import { logAuditAction } from "@/lib/auditLogger";
 import connectDB from "@/lib/mongodb";
 import SiteSettings from "@/models/SiteSettings";
 import { parse } from "cookie";
@@ -69,6 +70,24 @@ export async function PUT(request: NextRequest) {
     const settings = await SiteSettings.findByIdAndUpdate(body._id, body, {
       new: true,
     });
+
+    // Log audit
+    await logAuditAction({
+      userId: payload.userId,
+      userName: payload.name || "Admin",
+      userEmail: payload.email || "",
+      action: "update",
+      module: "settings",
+      entityType: "SiteSettings",
+      entityId: body._id,
+      entityName: "Site Settings",
+      ipAddress:
+        request.headers.get("x-forwarded-for") ||
+        request.headers.get("x-real-ip") ||
+        "",
+      userAgent: request.headers.get("user-agent") || "",
+    });
+
     return NextResponse.json(
       {
         success: true,

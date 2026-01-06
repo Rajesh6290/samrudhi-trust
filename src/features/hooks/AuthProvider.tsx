@@ -93,16 +93,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const logout = useCallback(async () => {
     try {
+      // Clear auth state immediately
+      setUser(null);
+      setIsAuthenticated(false);
+
+      // Then call logout API
       await fetch("/api/auth/logout", {
         method: "POST",
         credentials: "include",
       });
 
-      setUser(null);
-      setIsAuthenticated(false);
+      // Navigate to login page
       router.push("/login");
+      router.refresh();
     } catch (error) {
       console.error("Logout error:", error);
+      // Even if API fails, still redirect to login
+      router.push("/login");
+      router.refresh();
     }
   }, [router]);
 

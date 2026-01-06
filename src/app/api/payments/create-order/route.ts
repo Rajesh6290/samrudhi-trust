@@ -37,7 +37,8 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
+    // Check if member exists
+    const member = await Member.findById(memberId);
     // Member payment validations
     if (paymentType === "member") {
       if (!memberId || !month) {
@@ -47,8 +48,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Check if member exists
-      const member = await Member.findById(memberId);
       if (!member) {
         return NextResponse.json(
           { error: "Member not found" },
@@ -62,7 +61,6 @@ export async function POST(req: NextRequest) {
         month: new Date(month),
         status: { $in: ["completed", "pending"] },
       });
-
       if (existingPayment) {
         return NextResponse.json(
           { error: "Payment for this month already exists" },
@@ -78,6 +76,23 @@ export async function POST(req: NextRequest) {
           { error: "Donor name and email are required for donations" },
           { status: 400 }
         );
+      }
+      const existingMember = await Member.findOne({ email: donorEmail });
+      if (existingMember) {
+        const existingPaymentCheck = await Payment.findOne({
+          donorEmail,
+          month: new Date(month),
+          status: { $in: ["completed", "pending"] },
+        });
+        if (existingPaymentCheck) {
+          return NextResponse.json(
+            {
+              error:
+                "This email belongs to an existing member who has already paid for this month",
+            },
+            { status: 400 }
+          );
+        }
       }
     }
 
@@ -117,7 +132,20 @@ export async function POST(req: NextRequest) {
     });
 
     // Create payment record
-    const paymentData: any = {
+    const paymentData: {
+      paymentType: string;
+      amount: number;
+      status: string;
+      razorpayOrderId: string;
+      donorName: string;
+      donorEmail: string;
+      donorPhone?: string;
+      donorAddress?: string;
+      needs80G: boolean;
+      member?: string;
+      month?: Date;
+      panCard?: string;
+    } = {
       paymentType,
       amount,
       status: "pending",
@@ -137,16 +165,7 @@ export async function POST(req: NextRequest) {
     if (needs80G && panCard) {
       paymentData.panCard = panCard.toUpperCase();
     }
-
-    console.log(
-      "Creating payment with data:",
-      JSON.stringify(paymentData, null, 2)
-    );
     const payment = await Payment.create(paymentData);
-    console.log(
-      "Payment created:",
-      JSON.stringify(payment.toObject(), null, 2)
-    );
 
     return NextResponse.json({
       success: true,

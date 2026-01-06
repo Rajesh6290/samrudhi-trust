@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import dbConnect from "@/lib/mongodb";
 import Certificate from "@/models/Certificate";
+import { sendCertificateGeneratedEmail } from "@/lib/emailHelpers";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
@@ -57,6 +58,21 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const certificate = await Certificate.create(body);
+
+    // Send certificate email to recipient
+    if (certificate.recipientEmail) {
+      try {
+        await sendCertificateGeneratedEmail(
+          certificate.recipientName,
+          certificate.recipientEmail,
+          certificate.type,
+          certificate.certificateNumber,
+          certificate.issuedDate.toLocaleDateString()
+        );
+      } catch (emailError) {
+        console.error("Failed to send certificate email:", emailError);
+      }
+    }
 
     return NextResponse.json({ certificate }, { status: 201 });
   } catch (error: unknown) {

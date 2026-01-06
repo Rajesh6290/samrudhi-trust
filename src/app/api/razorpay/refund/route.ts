@@ -4,6 +4,8 @@ import Razorpay from "razorpay";
 import connectDB from "@/lib/mongodb";
 import Payment from "@/models/Payment";
 import { verifyToken } from "@/lib/auth";
+import { sendPaymentRefundEmail } from "@/lib/emailHelpers";
+import Member from "@/models/Member";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -128,6 +130,22 @@ export async function POST(request: NextRequest) {
       }
 
       await payment.save();
+
+      // Send refund email to member
+      if (payment.donorEmail) {
+        try {
+          const member = await Member.findOne({ email: payment.donorEmail });
+          await sendPaymentRefundEmail(
+            member?.name || payment.donorName || "Donor",
+            payment.donorEmail,
+            refund.amount / 100,
+            refund.id,
+            refundReason || "Requested by donor"
+          );
+        } catch (emailError) {
+          console.error("Failed to send refund email:", emailError);
+        }
+      }
 
       return NextResponse.json({
         success: true,

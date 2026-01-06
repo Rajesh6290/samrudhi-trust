@@ -23,6 +23,7 @@ import {
   Plus,
   QrCode,
   Receipt,
+  RefreshCw,
   Search,
   TrendingUp,
   Users,
@@ -90,17 +91,18 @@ export default function AdminPaymentsPage() {
     }
   }, [searchParams]);
 
-  const getQueryParams = () => {
+  // Build query params that update when dependencies change
+  const queryParams = (() => {
     let params = `page=${page}&limit=${pageLimit}`;
     if (activeTab === "members") params += "&paymentType=member";
     else if (activeTab === "donations") params += "&paymentType=donation";
     else if (activeTab === "80g") params += "&needs80G=true";
     if (statusFilter !== "all") params += `&status=${statusFilter}`;
     return params;
-  };
+  })();
 
   const { data: paymentsData, isLoading: paymentsLoading } = useSwr(
-    `payments?${getQueryParams()}`
+    activeTab === "payouts" ? null : `payments?${queryParams}`
   );
   const { data: payoutsData } = useSwr(
     activeTab === "payouts" ? "payouts" : null
@@ -138,18 +140,25 @@ export default function AdminPaymentsPage() {
 
   const downloadInvoice = async (paymentId: string) => {
     try {
-      const response = await fetch(`/api/payments/invoice/${paymentId}`);
-      const data = await response.json();
-      if (data.success && data.invoiceHTML) {
-        const invoiceWindow = window.open("", "_blank");
-        if (invoiceWindow) {
-          invoiceWindow.document.write(data.invoiceHTML);
-          invoiceWindow.document.close();
+      const response = await fetch(`/api/payments/invoice/${paymentId}`, {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.invoiceHTML) {
+          const invoiceWindow = window.open("", "_blank");
+          if (invoiceWindow) {
+            invoiceWindow.document.write(data.invoiceHTML);
+            invoiceWindow.document.close();
+          } else {
+            toast.error("Please allow pop-ups to view invoice");
+          }
         } else {
-          toast.error("Please allow pop-ups to view invoice");
+          toast.error("Failed to generate invoice");
         }
       } else {
-        toast.error("Failed to generate invoice");
+        toast.error("Failed to download invoice");
       }
     } catch (error) {
       console.error("Error downloading invoice:", error);
@@ -178,6 +187,15 @@ export default function AdminPaymentsPage() {
             </p>
           </div>
           <div className="flex gap-3">
+            <button
+              onClick={() =>
+                (window.location.href = "/admin/payments/reconciliation")
+              }
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white px-5 py-2.5 rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-medium"
+            >
+              <RefreshCw size={18} />
+              Verify Payments
+            </button>
             <button
               onClick={() => setIsScannerOpen(true)}
               className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-5 py-2.5 rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-medium"
@@ -923,20 +941,24 @@ function PayoutModal({
 
   const handlePayNow = async (values: { amount: string; purpose: string }) => {
     try {
-      const orderResponse = await fetch("/api/razorpay/create-order", {
+      const orderResponse = await createPayout("razorpay/create-order", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: {
           amount: values.amount,
           notes: {
             recipientName: shopkeeperInfo.name,
             recipientPhone: shopkeeperInfo.phone,
             purpose: values.purpose,
           },
-        }),
+        },
+        isAlert: false,
       });
 
-      const order = await orderResponse.json();
+      if (!orderResponse?.results?.id) {
+        throw new Error("Failed to create order");
+      }
+
+      const order = orderResponse.results;
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,

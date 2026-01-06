@@ -16,6 +16,7 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import CustomButton from "@/common/CustomButton";
 import useMutation from "@/features/hooks/useMutation";
+import useSwr from "@/features/hooks/useSwr";
 import Swal from "sweetalert2";
 
 interface Campaign {
@@ -36,12 +37,16 @@ interface Campaign {
 }
 
 export default function CampaignsPage() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const { isLoading, mutation } = useMutation();
+  const {
+    data: campaignsData,
+    isLoading: loading,
+    mutate,
+  } = useSwr("campaigns");
+  const campaigns: Campaign[] = campaignsData?.campaigns || [];
 
   const validationSchema = Yup.object({
     title: Yup.string().required("Title is required"),
@@ -128,7 +133,7 @@ export default function CampaignsPage() {
           });
           formik.resetForm();
           setImagePreview("");
-          fetchCampaigns();
+          mutate();
           handleCloseDrawer();
         } else {
           Swal.fire({
@@ -146,22 +151,6 @@ export default function CampaignsPage() {
       }
     },
   });
-
-  const fetchCampaigns = async () => {
-    try {
-      const res = await fetch("/api/campaigns");
-      const data = await res.json();
-      setCampaigns(data.campaigns || []);
-    } catch (error) {
-      console.error("Failed to fetch campaigns:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCampaigns();
-  }, []);
 
   useEffect(() => {
     if (editingCampaign && drawerOpen) {
@@ -243,7 +232,7 @@ export default function CampaignsPage() {
           text: "Campaign deleted successfully.",
           timer: 2000,
         });
-        fetchCampaigns();
+        mutate();
       } else {
         Swal.fire({
           icon: "error",

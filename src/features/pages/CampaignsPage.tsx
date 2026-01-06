@@ -7,9 +7,9 @@ import {
   Filter,
   Heart,
   MapPin,
-  X,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import BackgroundSlider from "../components/BackgroundSlider";
 import useSwr from "../hooks/useSwr";
@@ -36,10 +36,6 @@ const CampaignsPage = () => {
   const [filter, setFilter] = useState<
     "all" | "ongoing" | "upcoming" | "completed"
   >("all");
-  const [showLocationModal, setShowLocationModal] = useState(false);
-  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(
-    null
-  );
   const [likedItems, setLikedItems] = useState<Set<string>>(new Set());
   const { data, isLoading } = useSwr("campaigns");
   const campaigns: Campaign[] = data?.campaigns || [];
@@ -283,124 +279,122 @@ const CampaignsPage = () => {
                   const isLiked = likedItems.has(campaign._id);
 
                   return (
-                    <motion.div
+                    <Link
                       key={campaign._id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      transition={{ duration: 0.3, delay: index * 0.05 }}
-                      layout
-                      className="bg-white/95 backdrop-blur-md rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 group"
+                      href={`/campaign/${campaign._id}`}
+                      className="block"
                     >
-                      {/* Image Section */}
-                      <div className="relative h-64 overflow-hidden">
-                        <Image
-                          src={campaign.image}
-                          alt={campaign.title}
-                          fill
-                          className="object-cover group-hover:scale-110 transition-transform duration-500"
-                        />
-
-                        {/* Status Badge */}
-                        <div
-                          className={`absolute top-4 right-4 ${theme.badgeBg} text-white px-4 py-2 rounded-full flex items-center gap-2 shadow-lg backdrop-blur-sm bg-opacity-95`}
-                        >
-                          {status === "ongoing" && (
-                            <Clock size={16} className="animate-pulse" />
-                          )}
-                          <span className="text-sm font-bold">
-                            {theme.badgeText}
-                          </span>
-                        </div>
-
-                        {/* Like Button */}
-                        <button
-                          onClick={() => handleLike(campaign._id)}
-                          className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-lg hover:scale-110 transition-transform duration-200"
-                        >
-                          <Heart
-                            size={20}
-                            className={`${
-                              isLiked
-                                ? "fill-red-500 text-red-500"
-                                : "text-gray-600"
-                            } transition-colors duration-200`}
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ duration: 0.3, delay: index * 0.05 }}
+                        layout
+                        className="bg-white/95 backdrop-blur-md rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 group h-full"
+                      >
+                        {/* Image Section */}
+                        <div className="relative h-64 overflow-hidden">
+                          <Image
+                            src={campaign.image}
+                            alt={campaign.title}
+                            fill
+                            className="object-cover group-hover:scale-110 transition-transform duration-500"
                           />
-                        </button>
 
-                        <div className="absolute inset-0 bg-linear-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      </div>
-
-                      {/* Content Section */}
-                      <div className="p-6">
-                        <h3 className="text-2xl font-bold text-gray-900 mb-3 line-clamp-2 group-hover:text-emerald-600 transition-colors">
-                          {campaign.title}
-                        </h3>
-
-                        <p className="text-gray-600 mb-4 line-clamp-3 leading-relaxed">
-                          {campaign.description}
-                        </p>
-
-                        {/* Campaign Details */}
-                        <div className="space-y-2 mb-6 pb-6 border-b border-gray-200">
-                          <div className="flex items-center gap-2 text-gray-700">
-                            <MapPin
-                              size={18}
-                              className="text-red-500 shrink-0"
-                            />
-                            <span className="text-sm font-medium truncate">
-                              {campaign.location}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-2 text-gray-700">
-                            <Calendar
-                              size={18}
-                              className="text-blue-500 shrink-0"
-                            />
-                            <span className="text-sm font-medium">
-                              {formatDate(campaign.startDate)}
-                              {campaign.endDate &&
-                                campaign.endDate !== campaign.startDate &&
-                                ` - ${formatDate(campaign.endDate)}`}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="space-y-3">
-                          <motion.button
-                            onClick={() => handleAction(campaign)}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            disabled={status === "completed"}
-                            className={`relative w-full py-3 ${theme.buttonBg} ${theme.buttonHover} text-white font-bold rounded-xl transition-all duration-300 shadow-md hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed`}
+                          {/* Status Badge */}
+                          <div
+                            className={`absolute top-4 right-4 ${theme.badgeBg} text-white px-4 py-2 rounded-full flex items-center gap-2 shadow-lg backdrop-blur-sm bg-opacity-95`}
                           >
-                            {status === "completed"
-                              ? "Campaign Ended"
-                              : "Donate Now"}
-                          </motion.button>
+                            {status === "ongoing" && (
+                              <Clock size={16} className="animate-pulse" />
+                            )}
+                            <span className="text-sm font-bold">
+                              {theme.badgeText}
+                            </span>
+                          </div>
 
+                          {/* Like Button */}
                           <button
-                            onClick={() => {
-                              setSelectedCampaign(campaign);
-                              setShowLocationModal(true);
-                            }}
-                            className="w-full py-2.5 text-gray-600 text-sm font-semibold flex items-center justify-center gap-2 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all duration-200 group/link"
+                            onClick={() => handleLike(campaign._id)}
+                            className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-lg hover:scale-110 transition-transform duration-200"
                           >
-                            <MapPin
-                              size={16}
-                              className="group-hover/link:animate-bounce"
-                            />
-                            <span>View Location</span>
-                            <ArrowRight
-                              size={16}
-                              className="opacity-0 group-hover/link:opacity-100 -ml-2 group-hover/link:ml-0 transition-all duration-200"
+                            <Heart
+                              size={20}
+                              className={`${
+                                isLiked
+                                  ? "fill-red-500 text-red-500"
+                                  : "text-gray-600"
+                              } transition-colors duration-200`}
                             />
                           </button>
+
+                          <div className="absolute inset-0 bg-linear-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         </div>
-                      </div>
-                    </motion.div>
+
+                        {/* Content Section */}
+                        <div className="p-6">
+                          <h3 className="text-2xl font-bold text-gray-900 mb-3 line-clamp-2 group-hover:text-emerald-600 transition-colors">
+                            {campaign.title}
+                          </h3>
+
+                          <p className="text-gray-600 mb-4 line-clamp-3 leading-relaxed">
+                            {campaign.description}
+                          </p>
+
+                          {/* Campaign Details */}
+                          <div className="space-y-2 mb-6 pb-6 border-b border-gray-200">
+                            <div className="flex items-center gap-2 text-gray-700">
+                              <MapPin
+                                size={18}
+                                className="text-red-500 shrink-0"
+                              />
+                              <span className="text-sm font-medium truncate">
+                                {campaign.location}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 text-gray-700">
+                              <Calendar
+                                size={18}
+                                className="text-blue-500 shrink-0"
+                              />
+                              <span className="text-sm font-medium">
+                                {formatDate(campaign.startDate)}
+                                {campaign.endDate &&
+                                  campaign.endDate !== campaign.startDate &&
+                                  ` - ${formatDate(campaign.endDate)}`}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="space-y-3">
+                            <motion.button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleAction(campaign);
+                              }}
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              disabled={status === "completed"}
+                              className={`relative w-full py-3 ${theme.buttonBg} ${theme.buttonHover} text-white font-bold rounded-xl transition-all duration-300 shadow-md hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed`}
+                            >
+                              {status === "completed"
+                                ? "Campaign Ended"
+                                : "Donate Now"}
+                            </motion.button>
+
+                            <div className="w-full py-2.5 text-gray-600 text-sm font-semibold flex items-center justify-center gap-2 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all duration-200 group/link">
+                              <span>View Details</span>
+                              <ArrowRight
+                                size={16}
+                                className="group-hover/link:translate-x-1 transition-transform duration-200"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    </Link>
                   );
                 })}
               </AnimatePresence>
@@ -408,68 +402,6 @@ const CampaignsPage = () => {
           )}
         </div>
       </div>
-
-      {/* Location Modal */}
-      <AnimatePresence>
-        {showLocationModal && selectedCampaign && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4"
-            onClick={() => setShowLocationModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: "spring", duration: 0.5 }}
-              className="bg-white rounded-3xl p-8 max-w-lg w-full relative shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={() => setShowLocationModal(false)}
-                className="absolute top-6 right-6 p-2 hover:bg-gray-100 rounded-full transition-colors duration-200"
-              >
-                <X size={24} className="text-gray-600" />
-              </button>
-
-              <div className="mb-6">
-                <h3 className="text-3xl font-extrabold text-gray-900 mb-2 pr-10">
-                  {selectedCampaign.title}
-                </h3>
-                <div className="flex items-center gap-2 text-red-600 font-semibold text-lg">
-                  <MapPin size={22} className="shrink-0" />
-                  <span>{selectedCampaign.location}</span>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-2xl p-6 mb-6">
-                <p className="text-gray-700 text-base leading-relaxed">
-                  {selectedCampaign.address}
-                </p>
-              </div>
-
-              <div className="flex gap-3">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() =>
-                    window.open(
-                      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedCampaign.address)}`,
-                      "_blank"
-                    )
-                  }
-                  className="flex-1 py-4 bg-linear-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2"
-                >
-                  <MapPin size={20} />
-                  <span>Open in Maps</span>
-                </motion.button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </DefaultLayouts>
   );
 };

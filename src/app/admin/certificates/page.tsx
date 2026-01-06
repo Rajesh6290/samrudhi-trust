@@ -1,6 +1,8 @@
 "use client";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import useSwr from "@/features/hooks/useSwr";
+import useMutation from "@/features/hooks/useMutation";
 
 interface Certificate {
   _id: string;
@@ -14,8 +16,6 @@ interface Certificate {
 }
 
 export default function CertificatesPage() {
-  const [certificates, setCertificates] = useState<Certificate[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingCertificate, setEditingCertificate] =
     useState<Certificate | null>(null);
@@ -30,21 +30,13 @@ export default function CertificatesPage() {
     isActive: true,
   });
 
-  useEffect(() => {
-    fetchCertificates();
-  }, []);
-
-  const fetchCertificates = async () => {
-    try {
-      const res = await fetch("/api/certificates");
-      const data = await res.json();
-      setCertificates(data.certificates || []);
-    } catch (error) {
-      console.error("Failed to fetch certificates:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    data: certificatesData,
+    isLoading: loading,
+    mutate,
+  } = useSwr("certificates");
+  const certificates: Certificate[] = certificatesData?.certificates || [];
+  const { mutation } = useMutation();
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -54,57 +46,49 @@ export default function CertificatesPage() {
     const uploadFormData = new FormData();
     uploadFormData.append("file", file);
 
-    try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: uploadFormData,
-      });
+    const response = await mutation("upload", {
+      method: "POST",
+      body: uploadFormData,
+      isFormData: true,
+      isAlert: false,
+    });
 
-      const data = await res.json();
-      if (data.url) {
-        setFormData({ ...formData, imageUrl: data.url });
-      }
-    } catch (error) {
-      console.error("Failed to upload image:", error);
-    } finally {
-      setUploading(false);
+    if (response?.status === 200) {
+      setFormData({ ...formData, imageUrl: response.results.url });
     }
+    setUploading(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    try {
-      const url = editingCertificate
-        ? `/api/certificates/${editingCertificate._id}`
-        : "/api/certificates";
-      const method = editingCertificate ? "PUT" : "POST";
+    const path = editingCertificate
+      ? `certificates/${editingCertificate._id}`
+      : "certificates";
+    const method = editingCertificate ? "PUT" : "POST";
 
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+    const response = await mutation(path, {
+      method,
+      body: formData,
+      isAlert: true,
+    });
 
-      if (res.ok) {
-        fetchCertificates();
-        handleCloseModal();
-      }
-    } catch (error) {
-      console.error("Failed to save certificate:", error);
+    if (response?.status === 200 || response?.status === 201) {
+      mutate();
+      handleCloseModal();
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this certificate?")) return;
 
-    try {
-      const res = await fetch(`/api/certificates/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        fetchCertificates();
-      }
-    } catch (error) {
-      console.error("Failed to delete certificate:", error);
+    const response = await mutation(`certificates/${id}`, {
+      method: "DELETE",
+      isAlert: true,
+    });
+
+    if (response?.status === 200) {
+      mutate();
     }
   };
 

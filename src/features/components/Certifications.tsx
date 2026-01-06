@@ -9,7 +9,8 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import useSwr from "../hooks/useSwr";
 
 // --- Types ---
 interface Certificate {
@@ -25,24 +26,10 @@ interface Certificate {
 
 const Certifications = () => {
   const [selectedCert, setSelectedCert] = useState<Certificate | null>(null);
-  const [certificates, setCertificates] = useState<Certificate[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchCertificates = async () => {
-      try {
-        const res = await fetch("/api/certificates?active=true");
-        const data = await res.json();
-        setCertificates(data.certificates || []);
-      } catch (error) {
-        console.error("Failed to fetch certificates:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCertificates();
-  }, []);
+  const { data: certificatesData, isLoading: loading } = useSwr(
+    "certificates?active=true"
+  );
+  const certificates: Certificate[] = certificatesData?.certificates || [];
 
   return (
     <section className="py-24  overflow-hidden relative z-0">
@@ -71,7 +58,7 @@ const Certifications = () => {
             className="text-4xl md:text-5xl font-black text-slate-900 leading-tight mb-6"
           >
             Certified for <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-amber-500">
+            <span className="text-transparent bg-clip-text bg-linear-to-r from-orange-500 to-amber-500">
               Excellence & Impact
             </span>
           </motion.h2>
@@ -94,7 +81,7 @@ const Certifications = () => {
             {[...Array(3)].map((_, index) => (
               <div
                 key={index}
-                className="aspect-[4/3] rounded-3xl bg-slate-200 animate-pulse"
+                className="aspect-4/3 rounded-3xl bg-slate-200 animate-pulse"
               />
             ))}
           </div>
@@ -113,7 +100,7 @@ const Certifications = () => {
                 transition={{ duration: 0.4, delay: index * 0.1 }}
                 onClick={() => setSelectedCert(cert)}
                 // EXACT GALLERY CARD STYLING: aspect ratio, rounded corners, shadows, hover lift
-                className="group relative aspect-[4/3] rounded-3xl overflow-hidden cursor-pointer bg-slate-200 shadow-md hover:shadow-2xl hover:-translate-y-1 transition-all duration-500"
+                className="group relative aspect-4/3 rounded-3xl overflow-hidden cursor-pointer bg-slate-200 shadow-md hover:shadow-2xl hover:-translate-y-1 transition-all duration-500"
               >
                 {/* Full Background Image with Zoom Effect */}
                 <Image
@@ -124,7 +111,7 @@ const Certifications = () => {
                 />
 
                 {/* Gradient Overlay - Appears on Hover */}
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute inset-0 bg-linear-to-t from-slate-900/90 via-slate-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                 {/* Content Overlay - Slides up on Hover */}
                 <div className="absolute bottom-0 left-0 right-0 p-6 translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
@@ -156,7 +143,7 @@ const Certifications = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4"
+            className="fixed inset-0 z-100 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4"
             onClick={() => setSelectedCert(null)}
           >
             <motion.div
@@ -164,7 +151,7 @@ const Certifications = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col md:flex-row max-h-[85vh]"
+              className="bg-white rounded-4xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col md:flex-row max-h-[85vh]"
             >
               {/* Left: Image (Scrollable if needed) */}
               <div className="w-full md:w-3/5 bg-slate-100 relative h-64 md:h-auto overflow-hidden">
@@ -174,7 +161,7 @@ const Certifications = () => {
                   fill
                   className="object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent md:hidden" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent md:hidden" />
               </div>
 
               {/* Right: Details */}
@@ -280,7 +267,7 @@ const DetailRow = ({
       } ${active ? "text-green-600 flex items-center gap-1.5" : ""}`}
     >
       {active && (
-        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse relative top-[1px]" />
+        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse relative top-px" />
       )}
       {value}
     </span>

@@ -1,6 +1,7 @@
 import dbConnect from "@/lib/mongodb";
 import Volunteer from "@/models/Volunteer";
 import { NextRequest, NextResponse } from "next/server";
+import { sendVolunteerOpportunityEmail } from "@/lib/emailHelpers";
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
@@ -39,6 +40,25 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const volunteer = await Volunteer.create(body);
+
+    // Send volunteer opportunity email
+    if (volunteer.email) {
+      try {
+        await sendVolunteerOpportunityEmail(
+          volunteer.name,
+          volunteer.email,
+          "Volunteer Opportunities at Samriddhi Seva Trust",
+          `Thank you for your interest! We have various opportunities in ${volunteer.interestedAreas?.join(", ") || "different areas"}.`,
+          volunteer.availability || "Flexible",
+          "Our locations across Maharashtra"
+        );
+      } catch (emailError) {
+        console.error(
+          "Failed to send volunteer opportunity email:",
+          emailError
+        );
+      }
+    }
 
     return NextResponse.json({ volunteer }, { status: 201 });
   } catch (error: unknown) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Member from "@/models/Member";
 import { MediaService } from "@/lib/mediaService";
+import { sendWelcomeEmail } from "@/lib/emailHelpers";
 
 export async function POST(request: NextRequest) {
   try {
@@ -63,6 +64,13 @@ export async function POST(request: NextRequest) {
       receivedTshirt,
       isActive: true,
     });
+
+    // Send welcome email
+    try {
+      await sendWelcomeEmail(name, email);
+    } catch (emailError) {
+      console.error("Failed to send welcome email:", emailError);
+    }
 
     return NextResponse.json(
       {

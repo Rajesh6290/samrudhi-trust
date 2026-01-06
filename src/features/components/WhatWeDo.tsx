@@ -12,7 +12,8 @@ import {
   Users,
   Zap,
 } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React from "react";
+import useSwr from "../hooks/useSwr";
 
 interface Service {
   _id: string;
@@ -37,24 +38,10 @@ const iconMap: Record<string, React.ReactNode> = {
 };
 
 const WhatWeDo = () => {
-  const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        const res = await fetch("/api/services?active=true");
-        const data = await res.json();
-        setServices(data.services || []);
-      } catch (error) {
-        console.error("Failed to fetch services:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchServices();
-  }, []);
+  const { data: servicesData, isLoading: loading } = useSwr(
+    "services?active=true"
+  );
+  const services: Service[] = servicesData?.services || [];
 
   const FADE_UP = {
     initial: { opacity: 0, y: 30 },

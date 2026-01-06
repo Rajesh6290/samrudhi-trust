@@ -18,6 +18,7 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import CustomButton from "@/common/CustomButton";
 import useMutation from "@/features/hooks/useMutation";
+import useSwr from "@/features/hooks/useSwr";
 import Swal from "sweetalert2";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -51,14 +52,14 @@ interface Blog {
 }
 
 export default function BlogsPage() {
-  const [blogs, setBlogs] = useState<Blog[]>([]);
-  const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingBlog, setEditingBlog] = useState<Blog | null>(null);
   const [coverImagePreview, setCoverImagePreview] = useState<string>("");
   const [additionalImages, setAdditionalImages] = useState<string[]>([]);
   const [tabValue, setTabValue] = useState(0);
   const { isLoading, mutation } = useMutation();
+  const { data: blogsData, isLoading: loading, mutate } = useSwr("blogs");
+  const blogs: Blog[] = blogsData?.blogs || [];
 
   const validationSchema = Yup.object({
     title: Yup.string().required("Title is required"),
@@ -147,7 +148,7 @@ export default function BlogsPage() {
           formik.resetForm();
           setCoverImagePreview("");
           setAdditionalImages([]);
-          fetchBlogs();
+          mutate();
           handleCloseDrawer();
         } else {
           Swal.fire({
@@ -165,22 +166,6 @@ export default function BlogsPage() {
       }
     },
   });
-
-  const fetchBlogs = async () => {
-    try {
-      const res = await fetch("/api/blogs");
-      const data = await res.json();
-      setBlogs(data.blogs || []);
-    } catch (error) {
-      console.error("Failed to fetch blogs:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchBlogs();
-  }, []);
 
   useEffect(() => {
     if (editingBlog && drawerOpen) {
@@ -301,7 +286,7 @@ export default function BlogsPage() {
           text: "Blog deleted successfully.",
           timer: 2000,
         });
-        fetchBlogs();
+        mutate();
       } else {
         Swal.fire({
           icon: "error",

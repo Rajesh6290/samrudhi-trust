@@ -1,7 +1,9 @@
 "use client";
 import { ArrowRight, Check, Mail, MapPin, Phone } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import useSwr from "../hooks/useSwr";
+import { useState } from "react";
+import Swal from "sweetalert2";
 
 interface SiteSettings {
   organizationName: string;
@@ -16,22 +18,61 @@ interface SiteSettings {
 }
 
 const Footer = () => {
-  const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const { data: settingsData } = useSwr("settings");
+  const settings: SiteSettings | null = settingsData?.settings || null;
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [isSubscribing, setIsSubscribing] = useState(false);
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const response = await fetch("/api/settings");
-        if (response.ok) {
-          const data = await response.json();
-          setSettings(data.settings);
-        }
-      } catch (error) {
-        console.error("Failed to fetch settings:", error);
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (
+      !newsletterEmail ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newsletterEmail)
+    ) {
+      Swal.fire({
+        icon: "error",
+        title: "Invalid Email",
+        text: "Please enter a valid email address",
+      });
+      return;
+    }
+
+    setIsSubscribing(true);
+
+    try {
+      const response = await fetch("/api/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: newsletterEmail, status: "active" }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        Swal.fire({
+          icon: "success",
+          title: "Subscribed!",
+          text: "Thank you for subscribing to our newsletter!",
+        });
+        setNewsletterEmail("");
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Subscription Failed",
+          text: data.error || "Something went wrong. Please try again.",
+        });
       }
-    };
-    fetchSettings();
-  }, []);
+    } catch {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to subscribe. Please try again later.",
+      });
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
 
   if (!settings) {
     return (
@@ -223,16 +264,27 @@ const Footer = () => {
 
             <div className="mt-6">
               <h4 className="font-semibold mb-3">Newsletter</h4>
-              <div className="flex">
+              <form onSubmit={handleNewsletterSubmit} className="flex">
                 <input
                   type="email"
                   placeholder="Your email"
-                  className="flex-1 px-4 py-2 rounded-l-lg bg-white/10 border border-white/20 focus:outline-none focus:border-green-400 text-white placeholder-gray-500"
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
+                  disabled={isSubscribing}
+                  className="flex-1 px-4 py-2 rounded-l-lg bg-white/10 border border-white/20 focus:outline-none focus:border-green-400 text-white placeholder-gray-500 disabled:opacity-50"
                 />
-                <button className="bg-linear-to-r from-green-500 to-emerald-600 px-4 py-2 rounded-r-lg hover:shadow-lg transition-all">
-                  <ArrowRight size={20} />
+                <button
+                  type="submit"
+                  disabled={isSubscribing}
+                  className="bg-linear-to-r from-green-500 to-emerald-600 px-4 py-2 rounded-r-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubscribing ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <ArrowRight size={20} />
+                  )}
                 </button>
-              </div>
+              </form>
             </div>
           </div>
         </div>

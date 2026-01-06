@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import DefaultLayouts from "../layouts/DefaultLayouts";
 import BackgroundSlider from "../components/BackgroundSlider";
+import useMutation from "../hooks/useMutation";
 import {
   MessageSquare,
   Star,
@@ -36,9 +37,9 @@ const FeedBackPage = () => {
     anonymous: false,
   });
   const [hoveredRating, setHoveredRating] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const { mutation, isLoading: isSubmitting } = useMutation();
 
   const backgroundImages = [
     "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=1920&q=80",
@@ -48,10 +49,8 @@ const FeedBackPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
 
-    try {
-      const feedbackDetails = `
+    const feedbackDetails = `
 Category: ${formData.category}
 Rating: ${formData.rating}/5 stars
 Would Recommend: ${formData.wouldRecommend}
@@ -64,43 +63,37 @@ ${formData.feedback}
 ${formData.improvements ? `Suggested Improvements:\n${formData.improvements}` : ""}
       `.trim();
 
-      const response = await fetch("/api/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.anonymous ? "Anonymous" : formData.name,
-          email: formData.email,
-          message: feedbackDetails,
-          rating: formData.rating,
-        }),
-      });
+    const response = await mutation("feedback", {
+      method: "POST",
+      body: {
+        name: formData.anonymous ? "Anonymous" : formData.name,
+        email: formData.email,
+        message: feedbackDetails,
+        rating: formData.rating,
+      },
+      isAlert: false,
+    });
 
-      if (response.ok) {
-        setIsSubmitted(true);
-        setTimeout(() => {
-          setIsSubmitted(false);
-          setFormData({
-            name: "",
-            email: "",
-            phone: "",
-            location: "",
-            rating: 0,
-            category: "",
-            feedback: "",
-            improvements: "",
-            wouldRecommend: "",
-            anonymous: false,
-          });
-          setCurrentStep(1);
-        }, 5000);
-      } else {
-        alert("Failed to submit feedback. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error submitting feedback:", error);
-      alert("An error occurred. Please try again.");
-    } finally {
-      setIsSubmitting(false);
+    if (response?.status === 200 || response?.status === 201) {
+      setIsSubmitted(true);
+      setTimeout(() => {
+        setIsSubmitted(false);
+        setFormData({
+          name: "",
+          email: "",
+          phone: "",
+          location: "",
+          rating: 0,
+          category: "",
+          feedback: "",
+          improvements: "",
+          wouldRecommend: "",
+          anonymous: false,
+        });
+        setCurrentStep(1);
+      }, 5000);
+    } else {
+      alert("Failed to submit feedback. Please try again.");
     }
   };
 

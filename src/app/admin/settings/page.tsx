@@ -13,7 +13,9 @@ import {
   Youtube,
 } from "lucide-react";
 import Image from "next/image";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import useSwr from "@/features/hooks/useSwr";
+import useMutation from "@/features/hooks/useMutation";
 
 interface Settings {
   facebook?: string;
@@ -38,8 +40,6 @@ interface Settings {
 }
 
 const SettingsPage: React.FC = () => {
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [settings, setSettings] = useState<Settings>({
     organizationName: "Samriddhi Seva Trust",
@@ -50,48 +50,31 @@ const SettingsPage: React.FC = () => {
     officeMapEmbedUrl: "",
   });
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
+  const { data: settingsData, isLoading: loading, mutate } = useSwr("settings");
+  const { mutation, isLoading: saving } = useMutation();
 
-  const fetchSettings = async () => {
-    try {
-      const response = await fetch("/api/settings");
-      if (response.ok) {
-        const data = await response.json();
-        setSettings(data.settings);
-      }
-    } catch (error) {
-      console.error("Failed to fetch settings:", error);
-    } finally {
-      setLoading(false);
+  React.useEffect(() => {
+    if (settingsData?.settings) {
+      setSettings(settingsData.settings);
     }
-  };
+  }, [settingsData]);
 
   const handleSave = async () => {
-    setSaving(true);
-    try {
-      const response = await fetch("/api/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(settings),
-      });
+    const response = await mutation("settings", {
+      method: "PUT",
+      body: settings,
+      isAlert: false,
+    });
 
-      if (response.ok) {
-        const data = await response.json();
-        setSettings(data.settings); // Update local state with saved data
-        alert("Settings saved successfully!");
-      } else {
-        const error = await response.json();
-        console.error("Save error:", error);
-        alert("Failed to save settings: " + (error.error || "Unknown error"));
-      }
-    } catch (error) {
-      console.error("Failed to save settings:", error);
-      alert("Failed to save settings");
-    } finally {
-      setSaving(false);
+    if (response?.status === 200) {
+      setSettings(response.results.settings);
+      mutate();
+      alert("Settings saved successfully!");
+    } else {
+      alert(
+        "Failed to save settings: " +
+          (response?.results?.error || "Unknown error")
+      );
     }
   };
 
@@ -100,25 +83,20 @@ const SettingsPage: React.FC = () => {
     if (!file) return;
 
     setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
+    const formData = new FormData();
+    formData.append("file", file);
 
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
+    const response = await mutation("upload", {
+      method: "POST",
+      body: formData,
+      isFormData: true,
+      isAlert: false,
+    });
 
-      if (response.ok) {
-        const data = await response.json();
-        setSettings((prev) => ({ ...prev, upiQrCode: data.url }));
-      }
-    } catch (error) {
-      console.error("Upload failed:", error);
-    } finally {
-      setUploading(false);
+    if (response?.status === 200) {
+      setSettings((prev) => ({ ...prev, upiQrCode: response.results.url }));
     }
+    setUploading(false);
   };
 
   if (loading) {

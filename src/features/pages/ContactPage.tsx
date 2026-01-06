@@ -2,9 +2,10 @@
 import { ErrorMessage, Field, Form, Formik } from "formik";
 import { motion } from "framer-motion";
 import { CheckCircle, Mail, MapPin, Phone, Send } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import * as Yup from "yup";
 import useMutation from "../hooks/useMutation";
+import useSwr from "../hooks/useSwr";
 import DefaultLayouts from "../layouts/DefaultLayouts";
 
 interface SiteSettings {
@@ -14,28 +15,10 @@ interface SiteSettings {
 }
 
 const ContactPage = () => {
-  const [settings, setSettings] = useState<SiteSettings | null>(null);
-  const [loading, setLoading] = useState(true);
   const [submitted, setSubmitted] = useState(false);
   const { mutation, isLoading } = useMutation();
-
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
-    try {
-      const response = await fetch("/api/settings");
-      if (response.ok) {
-        const data = await response.json();
-        setSettings(data.settings);
-      }
-    } catch (error) {
-      console.error("Failed to fetch settings:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: settingsData, isLoading: loading } = useSwr("settings");
+  const settings: SiteSettings | null = settingsData?.settings || null;
 
   const validationSchema = Yup.object({
     name: Yup.string()

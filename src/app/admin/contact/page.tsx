@@ -3,7 +3,9 @@
 import AdminLayout from "@/features/layouts/AdminLayout";
 import { motion } from "framer-motion";
 import { Check, Mail, Trash2 } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import useSwr from "@/features/hooks/useSwr";
+import useMutation from "@/features/hooks/useMutation";
 
 interface Contact {
   _id: string;
@@ -16,68 +18,39 @@ interface Contact {
 }
 
 const ContactPage: React.FC = () => {
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "read" | "unread">("all");
 
-  useEffect(() => {
-    fetchContacts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter]);
+  const url =
+    filter === "all"
+      ? "admin/contact"
+      : `admin/contact?isRead=${filter === "read"}`;
 
-  const fetchContacts = async () => {
-    try {
-      const url =
-        filter === "all"
-          ? "/api/admin/contact"
-          : `/api/admin/contact?isRead=${filter === "read"}`;
-
-      const response = await fetch(url, {
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setContacts(data.contacts);
-      }
-    } catch (error) {
-      console.error("Failed to fetch contacts:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: contactData, isLoading: loading, mutate } = useSwr(url);
+  const contacts: Contact[] = contactData?.contacts || [];
+  const { mutation } = useMutation();
 
   const handleMarkRead = async (id: string, currentStatus: boolean) => {
-    try {
-      const response = await fetch(`/api/admin/contact/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ isRead: !currentStatus }),
-      });
+    const response = await mutation(`admin/contact/${id}`, {
+      method: "PATCH",
+      body: { isRead: !currentStatus },
+      isAlert: true,
+    });
 
-      if (response.ok) {
-        fetchContacts();
-      }
-    } catch (error) {
-      console.error("Failed to update contact:", error);
+    if (response?.status === 200) {
+      mutate();
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this message?")) return;
 
-    try {
-      const response = await fetch(`/api/admin/contact/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+    const response = await mutation(`admin/contact/${id}`, {
+      method: "DELETE",
+      isAlert: true,
+    });
 
-      if (response.ok) {
-        fetchContacts();
-      }
-    } catch (error) {
-      console.error("Failed to delete contact:", error);
+    if (response?.status === 200) {
+      mutate();
     }
   };
 

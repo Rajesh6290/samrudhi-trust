@@ -1,6 +1,8 @@
 "use client";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import useSwr from "@/features/hooks/useSwr";
+import useMutation from "@/features/hooks/useMutation";
 
 interface Service {
   _id: string;
@@ -25,8 +27,6 @@ const iconOptions = [
 ];
 
 export default function ServicesPage() {
-  const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [formData, setFormData] = useState({
@@ -37,56 +37,38 @@ export default function ServicesPage() {
     isActive: true,
   });
 
-  useEffect(() => {
-    fetchServices();
-  }, []);
-
-  const fetchServices = async () => {
-    try {
-      const res = await fetch("/api/services");
-      const data = await res.json();
-      setServices(data.services || []);
-    } catch (error) {
-      console.error("Failed to fetch services:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: servicesData, isLoading: loading, mutate } = useSwr("services");
+  const services: Service[] = servicesData?.services || [];
+  const { mutation } = useMutation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    try {
-      const url = editingService
-        ? `/api/services/${editingService._id}`
-        : "/api/services";
-      const method = editingService ? "PUT" : "POST";
+    const path = editingService ? `services/${editingService._id}` : "services";
+    const method = editingService ? "PUT" : "POST";
 
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+    const response = await mutation(path, {
+      method,
+      body: formData,
+      isAlert: true,
+    });
 
-      if (res.ok) {
-        fetchServices();
-        handleCloseModal();
-      }
-    } catch (error) {
-      console.error("Failed to save service:", error);
+    if (response?.status === 200 || response?.status === 201) {
+      mutate();
+      handleCloseModal();
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this service?")) return;
 
-    try {
-      const res = await fetch(`/api/services/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        fetchServices();
-      }
-    } catch (error) {
-      console.error("Failed to delete service:", error);
+    const response = await mutation(`services/${id}`, {
+      method: "DELETE",
+      isAlert: true,
+    });
+
+    if (response?.status === 200) {
+      mutate();
     }
   };
 

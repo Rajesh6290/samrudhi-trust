@@ -113,6 +113,7 @@ const DonationPage = () => {
           donorAddress: values.address,
           amount: parseFloat(values.amount),
           needs80G: values.needs80G,
+          month: new Date().toISOString().slice(0, 7),
           panCard: values.needs80G ? values.panCard.toUpperCase() : undefined,
         },
       });

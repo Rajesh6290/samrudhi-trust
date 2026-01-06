@@ -1,8 +1,16 @@
 import dbConnect from "@/lib/mongodb";
+import { logAuditAction } from "@/lib/auditLogger";
+import { verifyToken } from "@/lib/auth";
 import Campaign from "@/models/Campaign";
 import { MediaService } from "@/lib/mediaService";
 import { parse } from "cookie";
 import { NextRequest, NextResponse } from "next/server";
+
+interface AuthPayload {
+  userId: string;
+  name?: string;
+  email?: string;
+}
 
 export async function GET(
   request: NextRequest,
@@ -114,6 +122,26 @@ export async function PUT(
       );
     }
 
+    // Log audit
+    const payload = verifyToken(token) as AuthPayload | null;
+    if (payload) {
+      await logAuditAction({
+        userId: payload.userId,
+        userName: payload.name || "Admin",
+        userEmail: payload.email || "",
+        action: "update",
+        module: "campaigns",
+        entityType: "Campaign",
+        entityId: id,
+        entityName: campaign.title,
+        ipAddress:
+          request.headers.get("x-forwarded-for") ||
+          request.headers.get("x-real-ip") ||
+          "",
+        userAgent: request.headers.get("user-agent") || "",
+      });
+    }
+
     return NextResponse.json({ campaign });
   } catch (error: unknown) {
     console.error("Update campaign error:", error);
@@ -145,6 +173,26 @@ export async function DELETE(
         { error: "Campaign not found" },
         { status: 404 }
       );
+    }
+
+    // Log audit
+    const payload = verifyToken(token) as AuthPayload | null;
+    if (payload) {
+      await logAuditAction({
+        userId: payload.userId,
+        userName: payload.name || "Admin",
+        userEmail: payload.email || "",
+        action: "delete",
+        module: "campaigns",
+        entityType: "Campaign",
+        entityId: id,
+        entityName: campaign.title,
+        ipAddress:
+          request.headers.get("x-forwarded-for") ||
+          request.headers.get("x-real-ip") ||
+          "",
+        userAgent: request.headers.get("user-agent") || "",
+      });
     }
 
     return NextResponse.json({ message: "Campaign deleted successfully" });

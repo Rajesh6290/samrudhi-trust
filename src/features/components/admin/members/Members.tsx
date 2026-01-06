@@ -1,27 +1,44 @@
 "use client";
-import useSwr from "@/features/hooks/useSwr";
+import CustomButton from "@/common/CustomButton";
 import useMutation from "@/features/hooks/useMutation";
-import Pagination from "@mui/material/Pagination";
+import useSwr from "@/features/hooks/useSwr";
+import { PictureAsPdf } from "@mui/icons-material";
+import {
+  Alert,
+  Chip,
+  CircularProgress,
+  Menu,
+  MenuItem,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+} from "@mui/material";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
+import Pagination from "@mui/material/Pagination";
 import {
   Calendar,
   Check,
+  X as CloseIcon,
+  CreditCard,
+  Download,
   Droplet,
   Edit2,
   Mail,
   Phone,
+  Receipt,
   Search,
   Trash2,
   X,
-  CreditCard,
-  X as CloseIcon,
 } from "lucide-react";
 import Image from "next/image";
 import React, { useState } from "react";
-import AddNewMember from "./AddNewMember";
-import CustomButton from "@/common/CustomButton";
 import Swal from "sweetalert2";
+import AddNewMember from "./AddNewMember";
 
 // TypeScript Interfaces
 interface Member {
@@ -41,6 +58,18 @@ interface Member {
   __v: number;
 }
 
+interface Payment {
+  _id: string;
+  amount: number;
+  month?: string;
+  paymentDate: string;
+  status: "pending" | "completed" | "failed" | "refunded" | "disputed";
+  invoiceNumber?: string;
+  invoiceType?: "standard" | "80g";
+  razorpayPaymentId?: string;
+  paymentMethod?: string;
+}
+
 // --- HELPER ---
 const formatIdNumber = (id: string, joiningDate: string): string => {
   const year = new Date(joiningDate).getFullYear();
@@ -49,130 +78,235 @@ const formatIdNumber = (id: string, joiningDate: string): string => {
 };
 
 // --- FRONT SIDE COMPONENT ---
-const FrontSide = ({ member }: { member: Member }) => (
-  <div className="w-[320px] h-[500px] bg-linear-to-b from-[#fbfd6e] to-[#98d443] rounded-xl shadow-lg overflow-hidden flex flex-col relative border border-gray-300 mx-auto print:border-none">
-    {/* Maroon Header with Arc */}
-    <div className="relative bg-[#6b0f1a] pt-3 pb-2 px-2 text-center z-20 h-[110px]">
-      {/* The Convex Curve */}
-      <div className="absolute -bottom-4 left-0 w-[110%] -ml-[5%] h-[40px] bg-[#6b0f1a] rounded-[50%] z-10"></div>
+const FrontSide = ({
+  member,
+  settings,
+}: {
+  member: Member;
+  settings: {
+    organizationName?: string;
+    tagline?: string;
+    address?: string;
+    phone?: string;
+  };
+}) => {
+  return (
+    <div className="w-[320px] h-130 bg-linear-to-b from-[#fbfd6e] to-[#98d443] rounded-xl shadow-lg overflow-hidden flex flex-col relative border border-gray-300 mx-auto print:border-none">
+      {/* Maroon Header with Arc */}
+      <div className="relative bg-[#6b0f1a] pt-3 pb-2 px-2 text-center z-20 h-36">
+        {/* The Convex Curve */}
+        <div className="absolute -bottom-4 left-0 w-[110%] -ml-[5%] h-10 bg-[#6b0f1a] rounded-[50%] z-10"></div>
 
-      <div className="relative z-20 flex flex-col items-center">
-        {/* Logo */}
-        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center border-2 border-[#d4af37] shadow-sm mb-1">
-          {/* Replace text with actual logo image if available */}
-          <span className="text-[8px] font-bold text-[#6b0f1a]">LOGO</span>
-        </div>
-        {/* Trust Name */}
-        <h1 className="text-[#facc15] font-serif font-bold text-xl tracking-wide leading-none mb-0.5 drop-shadow-md">
-          SAMRIDDHI SEVA TRUST
-        </h1>
-        {/* Slogan */}
-        <p className="text-white text-[9px] italic opacity-90 mb-0.5 font-light">
-          Giving Happiness is the best way to find yourself....
-        </p>
-        {/* Regd No */}
-        <p className="text-[#fde047] text-[10px] font-semibold">
-          Regd. No. 41532200031/2022
-        </p>
-      </div>
-    </div>
-
-    {/* Body Content */}
-    <div className="flex-1 px-5 pt-8 relative z-10">
-      {/* Row: Photo (Left) & Blood Group (Right) */}
-      <div className="flex justify-between items-start mb-2 mt-2">
-        {/* Photo Frame */}
-        <div className="w-28 h-32 bg-white border-2 border-gray-300 shadow-lg rounded-sm overflow-hidden">
+        <div className="relative z-20 gap-1 flex flex-col items-center">
+          {/* Logo */}
           <Image
-            src={member.photo}
-            alt={member.name}
-            width={112}
-            height={128}
-            className="w-full h-full object-cover"
-            onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-              e.currentTarget.src = `https://via.placeholder.com/112x128?text=${member.name.charAt(0)}`;
-            }}
+            src="/logo.svg"
+            alt="Samriddhi Logo"
+            width={48}
+            height={48}
+            className="w-10 h-10 lg:size-18 object-contain"
           />
+          {/* Trust Name */}
+          <h1 className="text-[#facc15] uppercase font-serif font-extrabold text-xl tracking-wide leading-none mb-0.5 drop-shadow-md">
+            {settings?.organizationName}
+          </h1>
+          {/* Slogan */}
+          <p className="text-white text-right w-full text-[9px] italic opacity-90 mb-0.5 font-light">
+            {settings?.tagline}....
+          </p>
+          {/* Regd No */}
+          <p className="text-[#fde047] text-[14px] font-bold">
+            Regd. No. 41532200031/2022
+          </p>
         </div>
+      </div>
 
-        {/* Blood Group Floating Right */}
-        <div className="flex flex-col items-center justify-center pt-8 pr-2">
-          <div className="relative">
-            <Droplet className="w-9 h-9 text-[#d32f2f] fill-[#d32f2f] drop-shadow-sm" />
+      {/* Body Content */}
+      <div className="flex-1 px-5 pt-8 relative z-10">
+        {/* Row: Photo (Left) & Blood Group (Right) */}
+        <div className="flex justify-end items-start mb-2 mt-2">
+          {/* Photo Frame */}
+          <div className="w-28 h-32 rounded-tl-lg rounded-br-lg bg-white border-2 border-gray-300 shadow-lg rounded-sm overflow-hidden">
+            <Image
+              src={member.photo}
+              alt={member.name}
+              width={112}
+              height={128}
+              className="w-full h-full object-cover"
+              onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                e.currentTarget.src = `https://via.placeholder.com/112x128?text=${member.name.charAt(0)}`;
+              }}
+            />
           </div>
-          <span className="text-[#1a237e] font-extrabold text-xl -mt-1 tracking-tight">
-            {member.bloodGroup}
-          </span>
+
+          {/* Blood Group Floating Right */}
+          <div className="flex flex-col items-center justify-center pt-8 mx-6">
+            <div className="relative">
+              <Droplet
+                size={26}
+                className=" text-[#d32f2f] fill-[#d32f2f] drop-shadow-sm"
+              />
+            </div>
+            <span
+              style={{
+                WebkitTextStroke: "2px white",
+                paintOrder: "stroke fill",
+              }}
+              className="text-[#1a237e] font-extrabold text-xl -mt-1 tracking-tight"
+            >
+              {member.bloodGroup} ve
+            </span>
+          </div>
+        </div>
+
+        {/* Name */}
+        <div className="text-center mb-2">
+          <h2
+            className="text-[#c62828] font-[1000] text-xl uppercase leading-tight drop-shadow-xs"
+            style={{
+              WebkitTextStroke: "2px white",
+              paintOrder: "stroke fill",
+            }}
+          >
+            {member.name}
+          </h2>
+        </div>
+
+        {/* Details Table-ish Layout */}
+        <div className="w-full flex items-center justify-center">
+          <div className="space-y-0.5 px-1">
+            <div className="flex text-sm items-baseline">
+              <span
+                style={{
+                  WebkitTextStroke: "1px white",
+                  paintOrder: "stroke fill",
+                }}
+                className="text-blue-800 font-black w-24 text-left"
+              >
+                Designation
+              </span>
+              <span
+                style={{
+                  WebkitTextStroke: "1px white",
+                  paintOrder: "stroke fill",
+                }}
+                className="text-blue-800 font-black mx-1"
+              >
+                :
+              </span>
+              <span
+                style={{
+                  WebkitTextStroke: "1px white",
+                  paintOrder: "stroke fill",
+                }}
+                className="text-blue-800 font-black uppercase truncate"
+              >
+                {member.role}
+              </span>
+            </div>
+            <div className="flex text-sm items-baseline">
+              <span
+                style={{
+                  WebkitTextStroke: "1px white",
+                  paintOrder: "stroke fill",
+                }}
+                className="text-blue-800 font-black w-24 text-left"
+              >
+                ID No.
+              </span>
+              <span
+                style={{
+                  WebkitTextStroke: "1px white",
+                  paintOrder: "stroke fill",
+                }}
+                className="text-blue-800 font-black mx-1"
+              >
+                :
+              </span>
+              <span
+                style={{
+                  WebkitTextStroke: "1px white",
+                  paintOrder: "stroke fill",
+                }}
+                className="text-blue-800 font-black uppercase"
+              >
+                {formatIdNumber(member._id, member.joiningDate)}
+              </span>
+            </div>
+            <div className="flex text-sm items-baseline">
+              <span
+                style={{
+                  WebkitTextStroke: "1px white",
+                  paintOrder: "stroke fill",
+                }}
+                className="text-blue-800 font-black w-24 text-left"
+              >
+                Mob.
+              </span>
+              <span
+                style={{
+                  WebkitTextStroke: "1px white",
+                  paintOrder: "stroke fill",
+                }}
+                className="text-blue-800 font-black mx-1"
+              >
+                :
+              </span>
+              <span
+                style={{
+                  WebkitTextStroke: "1px white",
+                  paintOrder: "stroke fill",
+                }}
+                className="text-blue-800 font-black"
+              >
+                {member.phone}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Signature */}
+        <div className="absolute bottom-2 right-4 text-right">
+          <div className="h-6 relative">
+            {/* Signature Placeholder */}
+            <span
+              className="text-lg capitalize font-semibold text-black opacity-80"
+              style={{ fontFamily: "'Brush Script MT', cursive" }}
+            >
+              smruti ranjan sethi
+            </span>
+          </div>
+          <p className="text-[10px] font-bold text-black -mt-1">
+            Authorised Signature
+          </p>
         </div>
       </div>
 
-      {/* Name */}
-      <div className="text-center mb-2">
-        <h2 className="text-[#c62828] font-bold text-2xl uppercase leading-tight drop-shadow-xs">
-          {member.name}
-        </h2>
-      </div>
-
-      {/* Details Table-ish Layout */}
-      <div className="space-y-0.5 px-1">
-        <div className="flex text-sm items-baseline">
-          <span className="text-[#1565c0] font-bold w-[95px] text-right pr-2">
-            Designation :
-          </span>
-          <span className="text-[#1565c0] font-bold uppercase truncate">
-            {member.role}
-          </span>
-        </div>
-        <div className="flex text-sm items-baseline">
-          <span className="text-[#1565c0] font-bold w-[95px] text-right pr-2">
-            ID No. :
-          </span>
-          <span className="text-[#1565c0] font-bold uppercase">
-            {formatIdNumber(member._id, member.joiningDate)}
-          </span>
-        </div>
-        <div className="flex text-sm items-baseline">
-          <span className="text-[#1565c0] font-bold w-[95px] text-right pr-2">
-            Mob. :
-          </span>
-          <span className="text-[#1565c0] font-bold">{member.phone}</span>
-        </div>
-      </div>
-
-      {/* Signature */}
-      <div className="absolute bottom-2 right-4 text-right">
-        <div className="h-6 relative">
-          {/* Signature Placeholder */}
-          <span className="font-cursive text-lg text-black opacity-80">
-            S.Ranjan
-          </span>
-        </div>
-        <p className="text-[10px] font-bold text-black -mt-1">
-          Authorised Signature
+      {/* Blue Footer */}
+      <div className="bg-[#1a237e] py-2 px-4 text-center w-full mt-auto relative z-20">
+        <p className="text-white text-[9px] leading-tight font-medium">
+          {settings?.address}
+        </p>
+        <p className="text-white text-[10px] font-bold mt-0.5">
+          Mob.: {settings?.phone}
         </p>
       </div>
     </div>
-
-    {/* Blue Footer */}
-    <div className="bg-[#1a237e] py-2 px-4 text-center w-full mt-auto relative z-20">
-      <p className="text-white text-[9px] leading-tight font-medium">
-        110/1687, Sankarpur Mouza, K-4, Kalinga Vihar, BBSR - 7510199
-      </p>
-      <p className="text-white text-[10px] font-bold mt-0.5">
-        Mob.: {member.phone}
-      </p>
-    </div>
-  </div>
-);
+  );
+};
 
 // --- BACK SIDE COMPONENT ---
 const BackSide = () => (
-  <div className="w-[320px] h-[500px] bg-linear-to-br from-[#fbfd6e] to-[#98d443] rounded-xl shadow-lg overflow-hidden flex flex-col relative border border-gray-300 mx-auto print:border-none">
+  <div className="w-[320px] h-130 bg-linear-to-br from-[#fbfd6e] to-[#98d443] rounded-xl shadow-lg overflow-hidden flex flex-col relative border border-gray-300 mx-auto print:border-none">
     {/* WATERMARK LOGO */}
     <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none opacity-10">
-      <div className="w-48 h-48 rounded-full border-4 border-gray-800 flex items-center justify-center">
-        <span className="text-2xl font-bold text-gray-800">LOGO</span>
-      </div>
+      <Image
+        src="/logo.svg"
+        alt="Samriddhi Logo"
+        width={48}
+        height={48}
+        className="w-10 h-10 lg:size-48 object-contain"
+      />
     </div>
 
     {/* Content */}
@@ -192,7 +326,7 @@ const BackSide = () => (
           "Obey All the Rules and Regulations.",
         ].map((rule, i) => (
           <div key={i} className="flex gap-2 items-start">
-            <span className="font-bold text-black text-xs min-w-[15px] mt-0.5">
+            <span className="font-bold text-black text-xs min-w-3.75 mt-0.5">
               {i + 1}.
             </span>
             <p className="text-black text-xs font-semibold leading-relaxed">
@@ -207,14 +341,14 @@ const BackSide = () => (
     <div className="bg-[#6b0f1a] py-3 px-4 text-center w-full mt-auto relative z-20">
       <p className="text-white text-[10px] mb-1">
         <span className="opacity-80">E-mail :</span>{" "}
-        samriddhisevatrust05@gmail.com
+        samriddhisevatrust2022@gmail.com
       </p>
       <p className="text-white text-[10px] mb-1">
-        <span className="opacity-80">Web :</span> www.samriddhiseva.com
+        <span className="opacity-80">Web :</span> www.samriddhisevatrust.org
       </p>
       <p className="text-white text-[9px] leading-tight opacity-90 break-all">
         Facebook :
-        https://www.facebook.com/profile.php?id=100081242310061&mibextid=ZbWKwL
+        https://www.facebook.com/samriddhi.seva.trust?rdid=Q83jJUgVT6ClHQSp#
       </p>
     </div>
   </div>
@@ -247,6 +381,7 @@ interface MemberCardProps {
   onEdit: (member: Member) => void;
   onDelete: (id: string) => void;
   onViewIDCard: (member: Member) => void;
+  onViewPaymentHistory: (member: Member) => void;
 }
 
 const MemberCard: React.FC<MemberCardProps> = ({
@@ -254,6 +389,7 @@ const MemberCard: React.FC<MemberCardProps> = ({
   onEdit,
   onDelete,
   onViewIDCard,
+  onViewPaymentHistory,
 }) => {
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -359,13 +495,22 @@ const MemberCard: React.FC<MemberCardProps> = ({
           </div>
         </div>
 
-        <button
-          onClick={() => onViewIDCard(member)}
-          className="w-full bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 px-4 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg"
-        >
-          <CreditCard className="w-4 h-4" />
-          View ID Card
-        </button>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => onViewPaymentHistory(member)}
+            className="w-full bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-2 px-3 rounded-lg font-medium text-xs flex items-center justify-center gap-1.5 transition-all duration-200 shadow-md hover:shadow-lg"
+          >
+            <Receipt className="w-3.5 h-3.5" />
+            Payment
+          </button>
+          <button
+            onClick={() => onViewIDCard(member)}
+            className="w-full bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 px-3 rounded-lg font-medium text-xs flex items-center justify-center gap-1.5 transition-all duration-200 shadow-md hover:shadow-lg"
+          >
+            <CreditCard className="w-3.5 h-3.5" />
+            ID Card
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -376,11 +521,18 @@ const Members = () => {
   const [open, setOpen] = useState<boolean>(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [viewingIDCard, setViewingIDCard] = useState<Member | null>(null);
+  const [viewingPaymentHistory, setViewingPaymentHistory] =
+    useState<Member | null>(null);
+  const [paymentHistoryData, setPaymentHistoryData] = useState<Payment[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
   const [page, setPage] = useState<number>(1);
   const [limit] = useState<number>(12);
   const [searchInput, setSearchInput] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
-
+  const [pdfMenuAnchor, setPdfMenuAnchor] = useState<null | HTMLElement>(null);
+  const [exportingPDF, setExportingPDF] = useState(false);
+  const { data: settingData } = useSwr("settings");
+  const settings = settingData?.settings || {};
   const { mutation } = useMutation();
   const { data, isValidating, mutate } = useSwr(
     `members?page=${page}&limit=${limit}${searchQuery ? `&search=${searchQuery}` : ""}`
@@ -393,6 +545,21 @@ const Members = () => {
 
   const handleViewIDCard = (member: Member) => {
     setViewingIDCard(member);
+  };
+
+  const handleViewPaymentHistory = async (member: Member) => {
+    setViewingPaymentHistory(member);
+    setLoadingPayments(true);
+    try {
+      const response = await fetch(`/api/payments?memberId=${member._id}`);
+      const data = await response.json();
+      setPaymentHistoryData(data.payments || []);
+    } catch (error) {
+      console.error("Error fetching payment history:", error);
+      setPaymentHistoryData([]);
+    } finally {
+      setLoadingPayments(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -436,6 +603,54 @@ const Members = () => {
     setTimeout(() => setEditingMember(null), 300);
   };
 
+  const handlePDFMenuClick = (event: React.MouseEvent<HTMLElement>) => {
+    setPdfMenuAnchor(event.currentTarget);
+  };
+
+  const handlePDFMenuClose = () => {
+    setPdfMenuAnchor(null);
+  };
+
+  const handleExportPDF = async (type: string) => {
+    handlePDFMenuClose();
+    setExportingPDF(true);
+
+    try {
+      const response = await fetch(`/api/members/export-pdf?type=${type}`);
+
+      if (!response.ok) {
+        throw new Error("Failed to export PDF");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `members-export-${type}-${new Date().toISOString().split("T")[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      Swal.fire({
+        icon: "success",
+        title: "Export Successful!",
+        text: "Members PDF has been downloaded",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Export Failed",
+        text: "Failed to export members to PDF",
+      });
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
   const handleSearch = () => {
     setSearchQuery(searchInput);
     setPage(1);
@@ -445,7 +660,7 @@ const Members = () => {
     if (e.key === "Enter") handleSearch();
   };
 
-  const handlePageChange = (e: any, value: number) => {
+  const handlePageChange = (e: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -496,7 +711,7 @@ const Members = () => {
                   <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">
                     Front Side
                   </span>
-                  <FrontSide member={viewingIDCard} />
+                  <FrontSide member={viewingIDCard} settings={settings} />
                 </div>
 
                 <div className="flex flex-col items-center gap-2 pb-8">
@@ -504,6 +719,289 @@ const Members = () => {
                     Back Side
                   </span>
                   <BackSide />
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </Drawer>
+
+      {/* --- PAYMENT HISTORY DRAWER --- */}
+      <Drawer
+        anchor="right"
+        open={Boolean(viewingPaymentHistory)}
+        onClose={() => {
+          setViewingPaymentHistory(null);
+          setPaymentHistoryData([]);
+        }}
+        PaperProps={{
+          sx: {
+            width: { xs: "100%", sm: "650px" },
+            backgroundColor: "#f9fafb",
+          },
+        }}
+      >
+        <div className="flex flex-col h-full">
+          {/* Drawer Header */}
+          <div className="bg-linear-to-r from-green-600 to-emerald-600 px-6 py-5 border-b border-gray-200 flex items-center justify-between sticky top-0 z-50 shadow-lg">
+            <div>
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Receipt className="w-6 h-6" />
+                Payment History
+              </h2>
+              <p className="text-sm text-green-50 mt-1">
+                {viewingPaymentHistory?.name}
+              </p>
+            </div>
+            <IconButton
+              onClick={() => {
+                setViewingPaymentHistory(null);
+                setPaymentHistoryData([]);
+              }}
+            >
+              <CloseIcon className="w-6 h-6 text-white hover:text-red-200" />
+            </IconButton>
+          </div>
+
+          {/* Drawer Content */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {loadingPayments ? (
+              <div className="flex items-center justify-center py-20">
+                <CircularProgress size={50} sx={{ color: "#16a34a" }} />
+              </div>
+            ) : (
+              <>
+                {/* Current Month Status */}
+                <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-blue-600" />
+                    Current Month Status
+                  </h3>
+                  {(() => {
+                    const currentMonth = new Date().toISOString().slice(0, 7);
+                    const currentMonthPayment = paymentHistoryData.find(
+                      (p: Payment) =>
+                        p.month &&
+                        new Date(p.month).toISOString().slice(0, 7) ===
+                          currentMonth &&
+                        p.status === "completed"
+                    );
+                    return currentMonthPayment ? (
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                          <Check className="w-6 h-6 text-green-600" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-green-700">
+                            Payment Received
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Amount: ₹{currentMonthPayment.amount} •{" "}
+                            {new Date(
+                              currentMonthPayment.paymentDate
+                            ).toLocaleDateString("en-IN", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                          <X className="w-6 h-6 text-red-600" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-red-700">
+                            No Payment This Month
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Payment not received for{" "}
+                            {new Date().toLocaleDateString("en-IN", {
+                              month: "long",
+                              year: "numeric",
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Payment Summary */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white rounded-xl shadow-md p-5 border border-gray-200">
+                    <p className="text-sm text-gray-600 mb-1">Total Paid</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      ₹
+                      {paymentHistoryData
+                        .filter((p: Payment) => p.status === "completed")
+                        .reduce((sum: number, p: Payment) => sum + p.amount, 0)
+                        .toLocaleString("en-IN")}
+                    </p>
+                  </div>
+                  <div className="bg-white rounded-xl shadow-md p-5 border border-gray-200">
+                    <p className="text-sm text-gray-600 mb-1">Total Payments</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {
+                        paymentHistoryData.filter(
+                          (p: Payment) => p.status === "completed"
+                        ).length
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                {/* Payment History Table */}
+                <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+                  <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                    <h3 className="text-lg font-bold text-gray-900">
+                      Transaction History
+                    </h3>
+                  </div>
+
+                  {paymentHistoryData.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <Alert severity="info">
+                        No payment history found for this member
+                      </Alert>
+                    </div>
+                  ) : (
+                    <TableContainer component={Paper} elevation={0}>
+                      <Table>
+                        <TableHead>
+                          <TableRow sx={{ bgcolor: "#f9fafb" }}>
+                            <TableCell sx={{ fontWeight: 600 }}>
+                              Month
+                            </TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>
+                              Amount
+                            </TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>
+                              Status
+                            </TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>
+                              Invoice
+                            </TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {paymentHistoryData.map((payment: Payment) => (
+                            <TableRow
+                              key={payment._id}
+                              sx={{
+                                "&:hover": { bgcolor: "#f9fafb" },
+                                borderBottom: "1px solid #e5e7eb",
+                              }}
+                            >
+                              <TableCell>
+                                {payment.month
+                                  ? new Date(payment.month).toLocaleDateString(
+                                      "en-IN",
+                                      {
+                                        month: "short",
+                                        year: "numeric",
+                                      }
+                                    )
+                                  : "N/A"}
+                              </TableCell>
+                              <TableCell>
+                                <span className="font-semibold text-gray-900">
+                                  ₹{payment.amount.toLocaleString("en-IN")}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                {new Date(
+                                  payment.paymentDate
+                                ).toLocaleDateString("en-IN", {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
+                                })}
+                              </TableCell>
+                              <TableCell>
+                                <Chip
+                                  label={payment.status}
+                                  size="small"
+                                  sx={{
+                                    bgcolor:
+                                      payment.status === "completed"
+                                        ? "#dcfce7"
+                                        : payment.status === "pending"
+                                          ? "#fef3c7"
+                                          : "#fee2e2",
+                                    color:
+                                      payment.status === "completed"
+                                        ? "#166534"
+                                        : payment.status === "pending"
+                                          ? "#854d0e"
+                                          : "#991b1b",
+                                    fontWeight: 600,
+                                    textTransform: "capitalize",
+                                  }}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                {payment.invoiceNumber &&
+                                payment.status === "completed" ? (
+                                  <div className="flex items-center gap-2">
+                                    <IconButton
+                                      size="small"
+                                      onClick={async () => {
+                                        try {
+                                          // Handle invoice download
+                                          const blob = await fetch(
+                                            `/api/payments/invoice/${payment._id}`
+                                          ).then((r) => r.blob());
+                                          const url =
+                                            window.URL.createObjectURL(blob);
+                                          const link =
+                                            document.createElement("a");
+                                          link.href = url;
+                                          link.download = `invoice-${payment.invoiceNumber}.pdf`;
+                                          document.body.appendChild(link);
+                                          link.click();
+                                          link.remove();
+                                          window.URL.revokeObjectURL(url);
+                                        } catch (error) {
+                                          console.error(
+                                            "Error downloading invoice:",
+                                            error
+                                          );
+                                        }
+                                      }}
+                                      sx={{
+                                        bgcolor: "#dbeafe",
+                                        "&:hover": { bgcolor: "#bfdbfe" },
+                                      }}
+                                    >
+                                      <Download className="w-4 h-4 text-blue-700" />
+                                    </IconButton>
+                                    <div className="flex flex-col">
+                                      <span className="text-xs font-medium text-gray-900">
+                                        {payment.invoiceNumber}
+                                      </span>
+                                      <span className="text-xs text-gray-500">
+                                        {payment.invoiceType === "80g"
+                                          ? "80G"
+                                          : "Normal"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-gray-400">
+                                    N/A
+                                  </span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
                 </div>
               </>
             )}
@@ -521,10 +1019,92 @@ const Members = () => {
             Manage and view all trust members in one place
           </p>
         </div>
-        <div className="w-fit">
-          <CustomButton onClick={() => setOpen(true)}>
-            Add New Member
-          </CustomButton>
+        <div className="flex items-center gap-3">
+          <div className="w-fit">
+            <CustomButton
+              loading={exportingPDF}
+              loadingText="exporting..."
+              startIcon={<PictureAsPdf className="w-4 h-4" />}
+              className="bg-red-500!"
+              onClick={handlePDFMenuClick}
+            >
+              Export PDF
+            </CustomButton>
+          </div>
+          <Menu
+            anchorEl={pdfMenuAnchor}
+            open={Boolean(pdfMenuAnchor)}
+            onClose={handlePDFMenuClose}
+            anchorOrigin={{
+              vertical: "bottom",
+              horizontal: "right",
+            }}
+            transformOrigin={{
+              vertical: "top",
+              horizontal: "right",
+            }}
+            PaperProps={{
+              sx: {
+                mt: 1,
+                boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+                borderRadius: "8px",
+                minWidth: "220px",
+              },
+            }}
+          >
+            <MenuItem
+              onClick={() => handleExportPDF("all")}
+              sx={{
+                py: 1.5,
+                px: 2,
+                "&:hover": { bgcolor: "#fee2e2" },
+              }}
+            >
+              <div className="flex flex-col">
+                <span className="font-semibold text-gray-900">All Members</span>
+                <span className="text-xs text-gray-500">
+                  With current month payment status
+                </span>
+              </div>
+            </MenuItem>
+            <MenuItem
+              onClick={() => handleExportPDF("payment")}
+              sx={{
+                py: 1.5,
+                px: 2,
+                "&:hover": { bgcolor: "#fee2e2" },
+              }}
+            >
+              <div className="flex flex-col">
+                <span className="font-semibold text-gray-900">
+                  With Payment Status
+                </span>
+                <span className="text-xs text-gray-500">
+                  Name, email, phone & payment status
+                </span>
+              </div>
+            </MenuItem>
+            <MenuItem
+              onClick={() => handleExportPDF("minimal")}
+              sx={{
+                py: 1.5,
+                px: 2,
+                "&:hover": { bgcolor: "#fee2e2" },
+              }}
+            >
+              <div className="flex flex-col">
+                <span className="font-semibold text-gray-900">Minimal</span>
+                <span className="text-xs text-gray-500">
+                  Only name, email & phone
+                </span>
+              </div>
+            </MenuItem>
+          </Menu>
+          <div className="w-fit">
+            <CustomButton onClick={() => setOpen(true)}>
+              Add New Member
+            </CustomButton>
+          </div>
         </div>
       </div>
 
@@ -573,6 +1153,7 @@ const Members = () => {
               onEdit={handleEdit}
               onDelete={handleDelete}
               onViewIDCard={handleViewIDCard}
+              onViewPaymentHistory={handleViewPaymentHistory}
             />
           ))}
         </div>
