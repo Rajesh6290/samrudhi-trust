@@ -143,7 +143,7 @@ export async function generateInvoicePDF(
   try {
     // Dynamic import puppeteer-core and chromium for serverless compatibility
     const puppeteer = await import("puppeteer-core");
-    const chromium = await import("@sparticuz/chromium");
+    const chromium = await import("@sparticuz/chromium-min");
     const { invoice } = await import("@/features/templates/invoice");
 
     // Prepare invoice data
@@ -174,9 +174,10 @@ export async function generateInvoicePDF(
     // Generate PDF using puppeteer-core with chromium
     // Use different Chrome for local vs production
     const isProduction = process.env.NODE_ENV === "production";
+
     const browser = await puppeteer.launch({
       args: isProduction
-        ? chromium.default.args
+        ? [...chromium.default.args, "--disable-dev-shm-usage"]
         : ["--no-sandbox", "--disable-setuid-sandbox"],
       executablePath: isProduction
         ? await chromium.default.executablePath()
@@ -214,7 +215,7 @@ export async function generate80GCertificatePDF(
   try {
     // Dynamic import puppeteer-core and chromium for serverless compatibility
     const puppeteer = await import("puppeteer-core");
-    const chromium = await import("@sparticuz/chromium");
+    const chromium = await import("@sparticuz/chromium-min");
     const { invoice80GTemplate } = await import("@/features/templates/80G");
 
     // Prepare 80G certificate data
@@ -246,9 +247,10 @@ export async function generate80GCertificatePDF(
     // Generate PDF using puppeteer-core with chromium
     // Use different Chrome for local vs production
     const isProduction = process.env.NODE_ENV === "production";
+
     const browser = await puppeteer.launch({
       args: isProduction
-        ? chromium.default.args
+        ? [...chromium.default.args, "--disable-dev-shm-usage"]
         : ["--no-sandbox", "--disable-setuid-sandbox"],
       executablePath: isProduction
         ? await chromium.default.executablePath()

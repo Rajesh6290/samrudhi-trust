@@ -5,7 +5,7 @@ import Payment from "@/models/Payment";
 import SiteSettings from "@/models/SiteSettings";
 import { exportMember } from "@/features/templates/exportMember";
 import puppeteer from "puppeteer-core";
-import chromium from "@sparticuz/chromium";
+import chromium from "@sparticuz/chromium-min";
 import path from "path";
 import fs from "fs";
 
@@ -115,9 +115,10 @@ export async function GET(request: NextRequest) {
     // Generate PDF using puppeteer-core with chromium
     // Use different Chrome for local vs production
     const isProduction = process.env.NODE_ENV === "production";
+
     const browser = await puppeteer.launch({
       args: isProduction
-        ? chromium.args
+        ? [...chromium.args, "--disable-dev-shm-usage"]
         : ["--no-sandbox", "--disable-setuid-sandbox"],
       executablePath: isProduction
         ? await chromium.executablePath()

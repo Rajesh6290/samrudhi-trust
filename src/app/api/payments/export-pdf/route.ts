@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
-import chromium from "@sparticuz/chromium";
+import chromium from "@sparticuz/chromium-min";
 import connectDB from "@/lib/mongodb";
 import Payment from "@/models/Payment";
 import Member from "@/models/Member";
@@ -248,9 +248,10 @@ export async function GET(req: NextRequest) {
 
     // Use different Chrome for local vs production
     const isProduction = process.env.NODE_ENV === "production";
+
     const browser = await puppeteer.launch({
       args: isProduction
-        ? chromium.args
+        ? [...chromium.args, "--disable-dev-shm-usage"]
         : ["--no-sandbox", "--disable-setuid-sandbox"],
       executablePath: isProduction
         ? await chromium.executablePath()
