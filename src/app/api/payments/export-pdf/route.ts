@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 import connectDB from "@/lib/mongodb";
 import Payment from "@/models/Payment";
 import Member from "@/models/Member";
@@ -245,9 +246,20 @@ export async function GET(req: NextRequest) {
 </html>
     `;
 
+    // Use different Chrome for local vs production
+    const isProduction = process.env.NODE_ENV === "production";
     const browser = await puppeteer.launch({
+      args: isProduction
+        ? chromium.args
+        : ["--no-sandbox", "--disable-setuid-sandbox"],
+      executablePath: isProduction
+        ? await chromium.executablePath()
+        : process.platform === "darwin"
+          ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+          : process.platform === "win32"
+            ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+            : "/usr/bin/google-chrome",
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
     const page = await browser.newPage();

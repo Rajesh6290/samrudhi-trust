@@ -4,7 +4,8 @@ import Member from "@/models/Member";
 import Payment from "@/models/Payment";
 import SiteSettings from "@/models/SiteSettings";
 import { exportMember } from "@/features/templates/exportMember";
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 import path from "path";
 import fs from "fs";
 
@@ -111,16 +112,21 @@ export async function GET(request: NextRequest) {
       logoBase64
     );
 
-    // Generate PDF using puppeteer
+    // Generate PDF using puppeteer-core with chromium
+    // Use different Chrome for local vs production
+    const isProduction = process.env.NODE_ENV === "production";
     const browser = await puppeteer.launch({
+      args: isProduction
+        ? chromium.args
+        : ["--no-sandbox", "--disable-setuid-sandbox"],
+      executablePath: isProduction
+        ? await chromium.executablePath()
+        : process.platform === "darwin"
+          ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+          : process.platform === "win32"
+            ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+            : "/usr/bin/google-chrome",
       headless: true,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
-        "--disable-gpu",
-      ],
     });
 
     const page = await browser.newPage();

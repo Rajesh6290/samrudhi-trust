@@ -141,8 +141,9 @@ export async function generateInvoicePDF(
   paymentDetails: PaymentDetails
 ): Promise<Buffer> {
   try {
-    // Dynamic import puppeteer only when needed
-    const puppeteer = await import("puppeteer");
+    // Dynamic import puppeteer-core and chromium for serverless compatibility
+    const puppeteer = await import("puppeteer-core");
+    const chromium = await import("@sparticuz/chromium");
     const { invoice } = await import("@/features/templates/invoice");
 
     // Prepare invoice data
@@ -170,10 +171,21 @@ export async function generateInvoicePDF(
 
     const html = invoice(invoiceData);
 
-    // Generate PDF using puppeteer
+    // Generate PDF using puppeteer-core with chromium
+    // Use different Chrome for local vs production
+    const isProduction = process.env.NODE_ENV === "production";
     const browser = await puppeteer.launch({
+      args: isProduction
+        ? chromium.default.args
+        : ["--no-sandbox", "--disable-setuid-sandbox"],
+      executablePath: isProduction
+        ? await chromium.default.executablePath()
+        : process.platform === "darwin"
+          ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+          : process.platform === "win32"
+            ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+            : "/usr/bin/google-chrome",
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
@@ -200,7 +212,9 @@ export async function generate80GCertificatePDF(
   paymentDetails: PaymentDetails
 ): Promise<Buffer> {
   try {
-    const puppeteer = await import("puppeteer");
+    // Dynamic import puppeteer-core and chromium for serverless compatibility
+    const puppeteer = await import("puppeteer-core");
+    const chromium = await import("@sparticuz/chromium");
     const { invoice80GTemplate } = await import("@/features/templates/80G");
 
     // Prepare 80G certificate data
@@ -229,10 +243,21 @@ export async function generate80GCertificatePDF(
 
     const html = invoice80GTemplate(certificateData);
 
-    // Generate PDF using puppeteer
+    // Generate PDF using puppeteer-core with chromium
+    // Use different Chrome for local vs production
+    const isProduction = process.env.NODE_ENV === "production";
     const browser = await puppeteer.launch({
+      args: isProduction
+        ? chromium.default.args
+        : ["--no-sandbox", "--disable-setuid-sandbox"],
+      executablePath: isProduction
+        ? await chromium.default.executablePath()
+        : process.platform === "darwin"
+          ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+          : process.platform === "win32"
+            ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+            : "/usr/bin/google-chrome",
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
