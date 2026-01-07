@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/features/hooks/AuthProvider";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ToastContainer } from "react-toastify";
+import "dotenv/config";
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],

@@ -1,8 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { MediaService } from "@/lib/mediaService";
 import dbConnect from "@/lib/mongodb";
 import Member from "@/models/Member";
-import { MediaService } from "@/lib/mediaService";
-import { sendWelcomeEmail } from "@/lib/emailHelpers";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,11 +65,11 @@ export async function POST(request: NextRequest) {
     });
 
     // Send welcome email
-    try {
-      await sendWelcomeEmail(name, email);
-    } catch (emailError) {
-      console.error("Failed to send welcome email:", emailError);
-    }
+    // try {
+    //   await sendWelcomeEmail(name, email);
+    // } catch (emailError) {
+    //   console.error("Failed to send welcome email:", emailError);
+    // }
 
     return NextResponse.json(
       {
