@@ -2,6 +2,7 @@
 
 import useMutation from "@/features/hooks/useMutation";
 import useSwr from "@/features/hooks/useSwr";
+import DefaultLayouts from "@/features/layouts/DefaultLayouts";
 import { ErrorMessage, Field, Form, Formik } from "formik";
 import { motion } from "framer-motion";
 import {
@@ -9,7 +10,6 @@ import {
   CheckCircle,
   CreditCard,
   IndianRupee,
-  Info,
   Loader2,
   Lock,
   Mail,
@@ -22,7 +22,6 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import * as Yup from "yup";
-import DefaultLayouts from "@/features/layouts/DefaultLayouts";
 
 interface RazorpayResponse {
   razorpay_order_id: string;
@@ -43,11 +42,11 @@ const MemberPaymentPage = () => {
     new Date().toISOString().slice(0, 7)
   );
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
-  const [show80GInfo, setShow80GInfo] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const { mutation } = useMutation();
-  const { data: membersData, isLoading: membersLoading } = useSwr("members");
+  const { data: membersData, isLoading: membersLoading } =
+    useSwr("members?all=true");
 
   const members = useMemo(
     () => (membersData?.members || []) as Member[],
@@ -98,19 +97,6 @@ const MemberPaymentPage = () => {
     amount: Yup.number()
       .min(200, "Minimum amount is ₹200")
       .required("Amount is required"),
-    needs80G: Yup.boolean(),
-    panCard: Yup.string()
-      .transform((value) => value?.toUpperCase())
-      .when("needs80G", {
-        is: true,
-        then: (schema) =>
-          schema
-            .matches(
-              /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/,
-              "Invalid PAN card format (e.g., ABCDE1234F)"
-            )
-            .required("PAN card is required for 80G certificate"),
-      }),
   });
 
   const initialValues = {
@@ -119,8 +105,6 @@ const MemberPaymentPage = () => {
     phone: "",
     address: "",
     amount: "200",
-    needs80G: false,
-    panCard: "",
   };
 
   const handleSubmit = async (
@@ -154,8 +138,6 @@ const MemberPaymentPage = () => {
           donorPhone: values.phone,
           donorAddress: values.address,
           amount: parseFloat(values.amount),
-          needs80G: values.needs80G,
-          panCard: values.needs80G ? values.panCard.toUpperCase() : undefined,
         },
       });
 
@@ -391,7 +373,7 @@ const MemberPaymentPage = () => {
                       onSubmit={handleSubmit}
                       innerRef={formikRef}
                     >
-                      {({ isSubmitting, values }) => (
+                      {({ isSubmitting }) => (
                         <Form className="space-y-4">
                           <div className="grid md:grid-cols-2 gap-4">
                             {/* Member Selection */}
@@ -548,69 +530,6 @@ const MemberPaymentPage = () => {
                               component="div"
                               className="text-red-300 text-sm mt-2 ml-1"
                             />
-                          </div>
-
-                          {/* 80G Certificate Option */}
-                          <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                            <div className="flex items-start gap-3">
-                              <Field
-                                name="needs80G"
-                                type="checkbox"
-                                className="mt-1 w-4 h-4 rounded accent-blue-500"
-                              />
-                              <div className="flex-1">
-                                <label className="text-gray-800 font-semibold block cursor-pointer text-sm">
-                                  I need 80G Tax Exemption Certificate
-                                </label>
-                                <p className="text-gray-600 text-xs mt-1">
-                                  Get tax benefits under section 80G
-                                </p>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => setShow80GInfo(!show80GInfo)}
-                                className="text-blue-600 hover:text-blue-700 transition-colors"
-                              >
-                                <Info size={18} />
-                              </button>
-                            </div>
-
-                            {show80GInfo && (
-                              <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: "auto" }}
-                                className="mt-3 p-3 bg-blue-100 rounded-lg border border-blue-300"
-                              >
-                                <p className="text-gray-700 text-xs">
-                                  <strong>About 80G Certificate:</strong> Claim
-                                  tax deduction on your payment. PAN card
-                                  required.
-                                </p>
-                              </motion.div>
-                            )}
-
-                            {values.needs80G && (
-                              <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: "auto" }}
-                                className="mt-3"
-                              >
-                                <label className="block text-gray-700 font-semibold text-sm mb-1">
-                                  PAN Card Number *
-                                </label>
-                                <Field
-                                  name="panCard"
-                                  type="text"
-                                  placeholder="ABCDE1234F"
-                                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all uppercase"
-                                />
-                                <ErrorMessage
-                                  name="panCard"
-                                  component="div"
-                                  className="text-red-300 text-sm mt-2 ml-1"
-                                />
-                              </motion.div>
-                            )}
                           </div>
 
                           {/* Submit Button */}

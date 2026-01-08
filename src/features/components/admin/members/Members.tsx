@@ -624,18 +624,17 @@ const Members = () => {
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `members-export-${type}-${new Date().toISOString().split("T")[0]}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+
+      // Open in new tab instead of downloading
+      window.open(url, "_blank");
+
+      // Clean up the blob URL after a delay
+      setTimeout(() => window.URL.revokeObjectURL(url), 100);
 
       Swal.fire({
         icon: "success",
         title: "Export Successful!",
-        text: "Members PDF has been downloaded",
+        text: "PDF opened in new tab",
         timer: 2000,
         showConfirmButton: false,
       });

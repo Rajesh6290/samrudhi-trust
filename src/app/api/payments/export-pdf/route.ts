@@ -286,7 +286,7 @@ export async function GET(req: NextRequest) {
     return new NextResponse(Buffer.from(pdf), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="payment-report-${monthStr}.pdf"`,
+        "Content-Disposition": `inline; filename="payment-report-${monthStr}.pdf"`,
       },
     });
   } catch (error) {

@@ -18,6 +18,7 @@ interface MemberData {
   receivedIdCard?: boolean;
   receivedTshirt?: boolean;
   paymentStatus?: string;
+  paymentAmount?: number;
 }
 
 export async function GET(request: NextRequest) {
@@ -50,6 +51,11 @@ export async function GET(request: NextRequest) {
       currentDate.getMonth(),
       1
     );
+    const nextMonth = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() + 1,
+      1
+    );
 
     // Prepare member data based on export type
     const membersData: MemberData[] = [];
@@ -59,7 +65,7 @@ export async function GET(request: NextRequest) {
       for (const member of members) {
         const payment = await Payment.findOne({
           member: member._id,
-          month: currentMonth,
+          month: { $gte: currentMonth, $lt: nextMonth },
           status: "completed",
         }).lean();
 
@@ -74,6 +80,7 @@ export async function GET(request: NextRequest) {
           receivedIdCard: member.receivedIdCard,
           receivedTshirt: member.receivedTshirt,
           paymentStatus: payment ? "Paid" : "Unpaid",
+          paymentAmount: payment?.amount || 0,
         });
       }
     } else if (exportType === "payment") {
@@ -81,7 +88,7 @@ export async function GET(request: NextRequest) {
       for (const member of members) {
         const payment = await Payment.findOne({
           member: member._id,
-          month: currentMonth,
+          month: { $gte: currentMonth, $lt: nextMonth },
           status: "completed",
         }).lean();
 
@@ -90,6 +97,7 @@ export async function GET(request: NextRequest) {
           email: member.email,
           phone: member.phone || "",
           paymentStatus: payment ? "Paid" : "Unpaid",
+          paymentAmount: payment?.amount || 0,
         });
       }
     } else if (exportType === "minimal") {
@@ -146,12 +154,12 @@ export async function GET(request: NextRequest) {
 
     await browser.close();
 
-    // Return PDF as response
+    // Return PDF as response - open in browser preview
     return new NextResponse(Buffer.from(pdfBuffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="members-export-${exportType}-${new Date().toISOString().split("T")[0]}.pdf"`,
+        "Content-Disposition": `inline; filename="members-export-${exportType}-${new Date().toISOString().split("T")[0]}.pdf"`,
       },
     });
   } catch (error) {
@@ -184,18 +192,19 @@ function generateHTMLContent(
   let tableHeaders = "";
   if (exportType === "minimal") {
     tableHeaders = `
-      <th style="width: 60px; text-align: center; padding: 10px 8px; font-weight: 600; font-size: 12px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0;">SL No</th>
-      <th style="padding: 10px 8px; font-weight: 600; font-size: 12px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0;">Name</th>
-      <th style="padding: 10px 8px; font-weight: 600; font-size: 12px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0;">Email</th>
-      <th style="padding: 10px 8px; font-weight: 600; font-size: 12px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0;">Phone</th>
+      <th style="width: 25px; text-align: center; padding: 8px 2px; font-weight: 600; font-size: 14px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0;">SL</th>
+      <th style="padding: 10px 8px; font-weight: 600; font-size: 15px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0;">Name</th>
+      <th style="padding: 10px 8px; font-weight: 600; font-size: 15px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0;">Email</th>
+      <th style="padding: 10px 8px; font-weight: 600; font-size: 15px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0;">Phone</th>
     `;
   } else if (exportType === "payment") {
     tableHeaders = `
-      <th style="width: 30px; text-align: center; padding: 10px 5px; font-weight: 600; font-size: 11px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0;">SL</th>
-      <th style="padding: 10px 8px; font-weight: 600; font-size: 11px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; width: 20%;">Name</th>
-      <th style="padding: 10px 8px; font-weight: 600; font-size: 11px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; width: 25%;">Email</th>
-      <th style="padding: 10px 8px; font-weight: 600; font-size: 11px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; width: 15%;">Phone</th>
-      <th style="padding: 10px 8px; font-weight: 600; font-size: 11px; color: #555; text-transform: uppercase; text-align: center; border-bottom: 2px solid #e0e0e0; width: 15%;">Payment (${currentMonth.toLocaleDateString(
+      <th style="width: 3%; text-align: center; padding: 6px 1px; font-weight: 600; font-size: 13px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0;">SL</th>
+      <th style="padding: 8px 6px; font-weight: 600; font-size: 13px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; width: 20%;">Name</th>
+      <th style="padding: 8px 6px; font-weight: 600; font-size: 13px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; width: 24%;">Email</th>
+      <th style="padding: 8px 6px; font-weight: 600; font-size: 13px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; width: 14%;">Phone</th>
+      <th style="padding: 8px 6px; font-weight: 600; font-size: 13px; color: #555; text-transform: uppercase; text-align: center; border-bottom: 2px solid #e0e0e0; width: 11%;">Amount</th>
+      <th style="padding: 8px 6px; font-weight: 600; font-size: 13px; color: #555; text-transform: uppercase; text-align: center; border-bottom: 2px solid #e0e0e0; width: 13%;">Status (${currentMonth.toLocaleDateString(
         "en-IN",
         {
           month: "short",
@@ -206,15 +215,16 @@ function generateHTMLContent(
   } else {
     // All - with all details
     tableHeaders = `
-      <th style="width: 40px; text-align: center; padding: 10px 4px; font-weight: 600; font-size: 10px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0;">SL</th>
-      <th style="padding: 10px 6px; font-weight: 600; font-size: 10px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; width: 13%;">Name</th>
-      <th style="padding: 10px 6px; font-weight: 600; font-size: 10px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; width: 16%;">Email</th>
-      <th style="padding: 10px 6px; font-weight: 600; font-size: 10px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; width: 11%;">Phone</th>
-      <th style="padding: 10px 6px; font-weight: 600; font-size: 10px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; text-align: center; width: 8%;">Blood</th>
-      <th style="padding: 10px 6px; font-weight: 600; font-size: 10px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; text-align: center; width: 11%;">Joining</th>
-      <th style="padding: 10px 6px; font-weight: 600; font-size: 10px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; text-align: center; width: 8%;">ID Card</th>
-      <th style="padding: 10px 6px; font-weight: 600; font-size: 10px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; text-align: center; width: 9%;">T-Shirt</th>
-      <th style="padding: 10px 6px; font-weight: 600; font-size: 10px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; text-align: center; width: 10%;">Payment</th>
+      <th style="width: 25px; text-align: center; padding: 8px 2px; font-weight: 600; font-size: 9px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0;">SL</th>
+      <th style="padding: 8px 5px; font-weight: 600; font-size: 9px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; width: 11%;">Name</th>
+      <th style="padding: 8px 5px; font-weight: 600; font-size: 9px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; width: 14%;">Email</th>
+      <th style="padding: 8px 5px; font-weight: 600; font-size: 9px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; width: 10%;">Phone</th>
+      <th style="padding: 8px 5px; font-weight: 600; font-size: 9px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; text-align: center; width: 7%;">Blood</th>
+      <th style="padding: 8px 5px; font-weight: 600; font-size: 9px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; text-align: center; width: 9%;">Joining</th>
+      <th style="padding: 8px 5px; font-weight: 600; font-size: 9px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; text-align: center; width: 7%;">ID Card</th>
+      <th style="padding: 8px 5px; font-weight: 600; font-size: 9px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; text-align: center; width: 7%;">T-Shirt</th>
+      <th style="padding: 8px 5px; font-weight: 600; font-size: 9px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; text-align: center; width: 8%;">Amount</th>
+      <th style="padding: 8px 5px; font-weight: 600; font-size: 9px; color: #555; text-transform: uppercase; border-bottom: 2px solid #e0e0e0; text-align: center; width: 9%;">Status</th>
     `;
   }
 
@@ -237,21 +247,22 @@ function generateHTMLContent(
       if (exportType === "minimal") {
         tableRows += `
           <tr style="border-bottom: 1px solid #f0f0f0;">
-            <td style="text-align: center; padding: 10px 5px; font-weight: 500; color: #7f8c8d; font-size: 11px;">${serialNo}</td>
-            <td style="padding: 10px 8px; color: #2c3e50; font-size: 11px;">${member.name}</td>
-            <td style="padding: 10px 8px; color: #2c3e50; font-size: 11px;">${member.email}</td>
-            <td style="padding: 10px 8px; color: #2c3e50; font-size: 11px;">${member.phone}</td>
+            <td style="width: 25px; text-align: center; padding: 10px 2px; font-weight: 500; color: #7f8c8d; font-size: 14px;">${serialNo}</td>
+            <td style="padding: 10px 8px; color: #2c3e50; font-size: 14px;">${member.name}</td>
+            <td style="padding: 10px 8px; color: #2c3e50; font-size: 14px;">${member.email}</td>
+            <td style="padding: 10px 8px; color: #2c3e50; font-size: 14px;">${member.phone}</td>
           </tr>
         `;
       } else if (exportType === "payment") {
         tableRows += `
           <tr style="border-bottom: 1px solid #f0f0f0;">
-            <td style="text-align: center; padding: 10px 5px; font-weight: 500; color: #7f8c8d; font-size: 10px;">${serialNo}</td>
-            <td style="padding: 10px 8px; color: #2c3e50; font-size: 10px;">${member.name}</td>
-            <td style="padding: 10px 8px; color: #2c3e50; font-size: 10px;">${member.email}</td>
-            <td style="padding: 10px 8px; color: #2c3e50; font-size: 10px;">${member.phone}</td>
-            <td style="text-align: center; padding: 10px 8px;">
-              <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 10px; font-weight: 600; ${
+            <td style="text-align: center; padding: 6px 1px; font-weight: 500; color: #7f8c8d; font-size: 12px;">${serialNo}</td>
+            <td style="padding: 8px 6px; color: #2c3e50; font-size: 12px;">${member.name}</td>
+            <td style="padding: 8px 6px; color: #2c3e50; font-size: 12px;">${member.email}</td>
+            <td style="padding: 8px 6px; color: #2c3e50; font-size: 12px;">${member.phone}</td>
+            <td style="text-align: center; padding: 8px 6px; color: #2c3e50; font-size: 12px; font-weight: 600;">${member.paymentAmount ? "₹" + member.paymentAmount : "-"}</td>
+            <td style="text-align: center; padding: 8px 6px;">
+              <span style="display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; ${
                 member.paymentStatus === "Paid"
                   ? "background-color: #d1fae5; color: #065f46;"
                   : "background-color: #fee2e2; color: #991b1b;"
@@ -265,7 +276,7 @@ function generateHTMLContent(
         // All - with all details
         tableRows += `
           <tr style="border-bottom: 1px solid #f0f0f0;">
-            <td style="text-align: center; padding: 8px 4px; font-weight: 500; color: #7f8c8d; font-size: 9px;">${serialNo}</td>
+            <td style="width: 25px; text-align: center; padding: 8px 2px; font-weight: 500; color: #7f8c8d; font-size: 8px;">${serialNo}</td>
             <td style="padding: 8px 6px; color: #2c3e50; font-size: 9px;">${member.name}</td>
             <td style="padding: 8px 6px; color: #2c3e50; font-size: 9px;">${member.email}</td>
             <td style="padding: 8px 6px; color: #2c3e50; font-size: 9px;">${member.phone}</td>
@@ -289,6 +300,7 @@ function generateHTMLContent(
                 ${member.receivedTshirt ? "Yes" : "No"}
               </span>
             </td>
+            <td style="text-align: center; padding: 8px 5px; color: #2c3e50; font-size: 8px; font-weight: 600;">${member.paymentAmount ? "₹" + member.paymentAmount : "-"}</td>
             <td style="text-align: center; padding: 8px 6px;">
               <span style="display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 8px; font-weight: 600; ${
                 member.paymentStatus === "Paid"
