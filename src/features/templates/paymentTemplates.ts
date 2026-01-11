@@ -1,3 +1,4 @@
+import { getBaseUrl } from "@/lib/getBaseUrl";
 import { getBaseEmailTemplate } from "./baseTemplate";
 
 interface PaymentDetails {
@@ -73,7 +74,7 @@ export function getPaymentSuccessTemplate(details: PaymentDetails): string {
     }
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${process.env.NEXT_PUBLIC_BASE_URL}/payment?receiptNumber=${details.receiptNumber}" class="button">
+      <a href="${getBaseUrl()}/payment?receiptNumber=${details.receiptNumber}" class="button">
         Download Receipt
       </a>
     </div>
@@ -138,7 +139,7 @@ export function getPaymentFailedTemplate(
     </div>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${process.env.NEXT_PUBLIC_BASE_URL}/donation" class="button">
+      <a href="${getBaseUrl()}/donation" class="button">
         Try Again
       </a>
     </div>
@@ -253,7 +254,7 @@ export function getMonthlyDonationReceiptTemplate(
     </div>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${process.env.NEXT_PUBLIC_BASE_URL}/members/payments" class="button">
+      <a href="${getBaseUrl()}/members/payments" class="button">
         View Full History
       </a>
     </div>

@@ -22,6 +22,7 @@ import {
   getCertificateGeneratedTemplate,
   getContactFormNotificationTemplate,
 } from "@/features/templates/notificationTemplates";
+import { getBaseUrl } from "./getBaseUrl";
 
 /**
  * Email Helper Functions
@@ -86,7 +87,7 @@ export async function sendPasswordResetEmail(
   email: string,
   resetToken: string
 ): Promise<boolean> {
-  const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${resetToken}`;
+  const resetLink = `${getBaseUrl()}/reset-password?token=${resetToken}`;
   const html = getPasswordResetTemplate(name, resetLink);
   return await sendEmail({
     to: email,

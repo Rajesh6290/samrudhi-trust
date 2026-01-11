@@ -13,6 +13,7 @@ import {
   Briefcase,
   CreditCard,
   FileText,
+  Gift,
   Globe,
   HelpCircle,
   Image,
@@ -142,6 +143,13 @@ const MENU_ITEMS = [
     label: "Payments",
     href: "/admin/payments",
     permission: "payments",
+  },
+  {
+    icon: Gift,
+    label: "My Donations",
+    href: "/admin/my-donations",
+    permission: "profile",
+    alwaysShow: true,
   },
   {
     icon: Shield,
@@ -670,12 +678,20 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated or not authorized
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push("/login");
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.push("/login");
+      } else if (
+        !["superadmin", "admin", "subadmin", "member"].includes(
+          user?.role || ""
+        )
+      ) {
+        router.push("/login");
+      }
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, user, router]);
 
   // Memoized callbacks
   const handleToggleSidebar = useCallback(() => {

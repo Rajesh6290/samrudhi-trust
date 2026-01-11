@@ -3,6 +3,7 @@ import Contact from "@/models/Contact";
 import { NextRequest, NextResponse } from "next/server";
 import { sendContactFormNotification } from "@/lib/emailHelpers";
 import User from "@/models/User";
+import { logAuditAction, getRequestMetadata } from "@/lib/auditLogger";
 
 // POST - Submit contact message (public)
 export async function POST(request: NextRequest) {
@@ -25,6 +26,21 @@ export async function POST(request: NextRequest) {
       phone,
       subject,
       message,
+    });
+
+    // Log contact form submission (public action)
+    const metadata = getRequestMetadata(request);
+    await logAuditAction({
+      userId: "public",
+      userName: name,
+      userEmail: email,
+      action: "create",
+      module: "contact",
+      entityType: "Contact",
+      entityId: contact._id.toString(),
+      entityName: subject,
+      ...metadata,
+      status: "success",
     });
 
     // Send notification to all admins

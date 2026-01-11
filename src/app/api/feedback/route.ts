@@ -1,6 +1,7 @@
 import connectDB from "@/lib/mongodb";
 import Feedback from "@/models/Feedback";
 import { NextRequest, NextResponse } from "next/server";
+import { logAuditAction, getRequestMetadata } from "@/lib/auditLogger";
 
 // GET - Fetch all feedback (public)
 export async function GET() {
@@ -46,6 +47,21 @@ export async function POST(request: NextRequest) {
       phone,
       message,
       rating,
+    });
+
+    // Log feedback submission (public action)
+    const metadata = getRequestMetadata(request);
+    await logAuditAction({
+      userId: "public",
+      userName: name,
+      userEmail: email,
+      action: "create",
+      module: "feedback",
+      entityType: "Feedback",
+      entityId: feedback._id.toString(),
+      entityName: message.substring(0, 50),
+      ...metadata,
+      status: "success",
     });
 
     return NextResponse.json(

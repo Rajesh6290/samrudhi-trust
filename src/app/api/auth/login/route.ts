@@ -47,10 +47,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user is admin, subadmin, or superadmin
-    if (!["superadmin", "admin", "subadmin"].includes(user.role)) {
+    // Check if user has valid role (admin, subadmin, superadmin, or member)
+    if (!["superadmin", "admin", "subadmin", "member"].includes(user.role)) {
       return NextResponse.json(
-        { error: "Unauthorized: Admin access only" },
+        { error: "Unauthorized: No access" },
         { status: 403 }
       );
     }

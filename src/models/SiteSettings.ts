@@ -19,6 +19,10 @@ export interface ISiteSettings extends Document {
   ifscCode?: string;
   accountHolderName?: string;
 
+  // Tax Details
+  pan: string;
+  gstin?: string;
+
   // UPI IDs
   upiId?: string;
   upiQrCode?: string;
@@ -66,6 +70,19 @@ const siteSettingsSchema = new Schema<ISiteSettings>(
     accountNumber: { type: String, trim: true },
     ifscCode: { type: String, trim: true },
     accountHolderName: { type: String, trim: true },
+
+    // Tax Details
+    pan: {
+      type: String,
+      required: [true, "PAN is required"],
+      trim: true,
+      uppercase: true,
+    },
+    gstin: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
 
     // UPI
     upiId: { type: String, trim: true },

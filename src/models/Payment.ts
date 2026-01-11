@@ -66,6 +66,12 @@ export interface IPayment extends Document {
   webhookReceivedAt?: Date;
   webhookEventId?: string;
 
+  // Payment retry tracking
+  retryToken?: string;
+  retryTokenExpiry?: Date;
+  retryEmailSent?: boolean;
+  retryEmailSentAt?: Date;
+
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -231,6 +237,21 @@ const PaymentSchema: Schema = new Schema(
     },
     webhookEventId: {
       type: String,
+    },
+    retryToken: {
+      type: String,
+      sparse: true,
+      index: true,
+    },
+    retryTokenExpiry: {
+      type: Date,
+    },
+    retryEmailSent: {
+      type: Boolean,
+      default: false,
+    },
+    retryEmailSentAt: {
+      type: Date,
     },
     notes: {
       type: String,

@@ -3,8 +3,11 @@ interface InvoiceData {
   organizationEmail: string;
   organizationPhone: string;
   organizationAddress: string;
+  organizationPan: string;
+  organizationGstin?: string;
   chairmanName: string;
   chairmanPhoto?: string;
+  logoUrl?: string;
   invoiceNumber: string;
   date: string;
   donorName: string;
@@ -240,6 +243,21 @@ export const invoice = (data: InvoiceData) => {
             text-align: center;
         }
         
+        .signature-section {
+            margin: 20px 0;
+        }
+        
+        .signature {
+            font-family: 'Brush Script MT', cursive;
+            font-size: 24px;
+            margin: 12px 0;
+        }
+        
+        .signatory {
+            margin-top: 6px;
+            font-size: 11px;
+        }
+        
         .footer {
             margin-top: 15px;
             padding-top: 8px;
@@ -327,10 +345,10 @@ export const invoice = (data: InvoiceData) => {
                 <p>${data.organizationAddress}</p>
                 <p>Email: ${data.organizationEmail}</p>
                 <p>Phone: ${data.organizationPhone}</p>
-                <p>PAN: AABTI1433N | GSTIN: XXXXXXXXXXXXXXX</p>
+                <p>PAN: ${data.organizationPan}${data.organizationGstin ? ` | GSTIN: ${data.organizationGstin}` : ""}</p>
             </div>
             <div class="logo-box">
-                <img src="/logo.svg" alt="Logo" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                <img src="${data.logoUrl || "/logo.svg"}" alt="Logo" style="max-width: 100%; max-height: 100%; object-fit: contain;">
             </div>
         </div>
         
@@ -418,10 +436,10 @@ export const invoice = (data: InvoiceData) => {
                 <div class="signature-line"></div>
                 <p class="signature-label">Customer Signature</p>
             </div>
-            <div class="signature-box">
-                <div class="signature-line"></div>
-                <p class="signature-label">Authorized Signatory</p>
-                <p style="font-size: 10px; margin-top: 3px;">${data.chairmanName}</p>
+            <div class="signature-box signature-section">
+                <p>For ${data.organizationName}</p>
+                <div class="signature">${data.chairmanName}</div>
+                <p class="signatory">(Authorised Signatory)</p>
             </div>
         </div>
         

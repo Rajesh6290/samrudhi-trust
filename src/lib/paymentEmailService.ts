@@ -1,57 +1,109 @@
-import nodemailer from "nodemailer";
+import { sendEmail as sendEmailHelper } from "./emailService";
+import SiteSettings from "@/models/SiteSettings";
+import connectDB from "@/lib/mongodb";
+import { getBaseUrl } from "./getBaseUrl";
 
 /**
- * Email notification service for payment-related events
- * Handles sending emails for payment failures, refunds, and reconciliation issues
+ * Professional email templates for payment-related notifications
  */
 
-interface EmailPayload {
-  to: string;
-  subject: string;
-  html: string;
-}
-
-// Create reusable transporter
-const createTransporter = () => {
-  // Use environment variables for email configuration
-  const transportConfig = {
-    host: process.env.SMTP_HOST || "smtp.gmail.com",
-    port: parseInt(process.env.SMTP_PORT || "587"),
-    secure: process.env.SMTP_SECURE === "true", // true for 465, false for other ports
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  };
-
-  return nodemailer.createTransport(transportConfig);
-};
+const getEmailStyles = () => `
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.5; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+  .container { max-width: 600px; margin: 20px auto; background: #ffffff; border: 1px solid #e0e0e0; }
+  .header { background: #ffffff; padding: 20px; border-bottom: 1px solid #e0e0e0; text-align: center; }
+  .logo { max-height: 60px; width: auto; display: block; margin: 0 auto; }
+  .content { padding: 30px 25px; }
+  .title { font-size: 20px; font-weight: 600; color: #000; margin: 0 0 15px 0; }
+  .text { font-size: 14px; color: #555; margin: 0 0 12px 0; line-height: 1.6; }
+  .button { display: inline-block; padding: 12px 24px; background: #000; color: #fff; text-decoration: none; border-radius: 4px; font-weight: 500; margin: 15px 0; font-size: 14px; }
+  .details-box { border: 1px solid #e0e0e0; padding: 15px; margin: 20px 0; }
+  .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-label { font-weight: 500; color: #666; font-size: 13px; }
+  .detail-value { color: #000; font-weight: 500; font-size: 13px; }
+  .info-box { background: #f9f9f9; border-left: 3px solid #000; padding: 15px; margin: 20px 0; font-size: 13px; }
+  .footer { background: #fafafa; padding: 15px 20px; border-top: 1px solid #e0e0e0; text-align: center; font-size: 12px; color: #777; }
+`;
 
 /**
- * Send email notification using nodemailer
+ * Send email when money is deducted but payment shows as pending/failed
  */
-async function sendEmail(payload: EmailPayload): Promise<boolean> {
-  try {
-    const transporter = createTransporter();
+export async function sendPaymentDiscrepancyEmail(
+  recipientEmail: string,
+  recipientName: string,
+  amount: number,
+  razorpayOrderId: string,
+  isMember: boolean
+): Promise<void> {
+  await connectDB();
 
-    const mailOptions = {
-      from: `"${process.env.EMAIL_FROM_NAME || "Samrudhi Trust"}" <${process.env.SMTP_USER}>`,
-      to: payload.to,
-      subject: payload.subject,
-      html: payload.html,
-    };
+  const settings = await SiteSettings.findOne();
+  const orgName = settings?.organizationName || "Our Organization";
+  const orgEmail = settings?.email || "support@example.org";
+  const orgPhone = settings?.phone || "";
+  const baseUrl = getBaseUrl() || "http://localhost:3000";
 
-    const info = await transporter.sendMail(mailOptions);
-    console.warn("Email sent successfully:", info.messageId);
-    return true;
-  } catch (error) {
-    console.error("Error sending email:", error);
-    return false;
-  }
+  await sendEmailHelper({
+    to: recipientEmail,
+    subject: `Payment Under Verification - ${orgName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>${getEmailStyles()}</style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <img src="${baseUrl}/logo.svg" alt="${orgName}" class="logo" onerror="this.style.display='none'" />
+          </div>
+          <div class="content">
+            <h1 class="title">Payment Under Verification</h1>
+            <p class="text">Dear ${recipientName},</p>
+            <p class="text">We have received your payment request for <strong>₹${amount.toLocaleString("en-IN")}</strong>. There is a slight delay in confirming the payment status with our payment gateway.</p>
+            
+            <div class="details-box">
+              <div class="detail-row">
+                <span class="detail-label">Amount</span>
+                <span class="detail-value">₹${amount.toLocaleString("en-IN")}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Order ID</span>
+                <span class="detail-value">${razorpayOrderId}</span>
+              </div>
+            </div>
+            
+            <div class="info-box">
+              <p class="text" style="margin: 0; font-size: 14px;"><strong>What's happening?</strong><br>Your payment is being verified with our payment gateway. This usually takes 24-48 hours. If money was deducted from your account, it will be reflected within 2 business days.</p>
+            </div>
+            
+            ${
+              isMember
+                ? `
+            <div style="text-align: center; margin: 24px 0;">
+              <a href="${baseUrl}/admin/my-donations" class="button">View Payment Status</a>
+            </div>
+            `
+                : ""
+            }
+            
+            <p class="text" style="margin-top: 32px; font-size: 14px; color: #6b7280;">If you have any questions, please contact us at <a href="mailto:${orgEmail}" style="color: #2563eb; text-decoration: none;">${orgEmail}</a></p>
+          </div>
+          <div class="footer">
+            <p style="margin: 0 0 8px 0;">© ${new Date().getFullYear()} ${orgName}. All rights reserved.</p>
+            ${orgEmail ? `<p style="margin: 0;">${orgEmail}${orgPhone ? ` • ${orgPhone}` : ""}</p>` : ""}
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+  });
 }
 
 /**
- * Send payment failure notification to donor
+ * Send payment failure notification
  */
 export async function sendPaymentFailureEmail(
   email: string,
@@ -60,55 +112,73 @@ export async function sendPaymentFailureEmail(
   orderId: string,
   failureReason: string
 ) {
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #dc3545; color: white; padding: 20px; text-align: center; }
-        .content { padding: 20px; background-color: #f9f9f9; }
-        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
-        .button { background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>Payment Failed</h1>
-        </div>
-        <div class="content">
-          <p>Dear ${name},</p>
-          <p>We're sorry, but your payment could not be processed.</p>
-          <p><strong>Payment Details:</strong></p>
-          <ul>
-            <li>Amount: ₹${amount}</li>
-            <li>Order ID: ${orderId}</li>
-            <li>Reason: ${failureReason}</li>
-          </ul>
-          <p>If money was deducted from your account, please don't worry. It will be automatically refunded to your account within 5-7 business days.</p>
-          <p>If you'd like to try again, please click the button below:</p>
-          <a href="${process.env.NEXT_PUBLIC_BASE_URL}/donation" class="button">Try Again</a>
-          <p>If you continue to face issues or have any questions, please contact us at ${process.env.SUPPORT_EMAIL || "support@samrudhitrust.org"}</p>
-        </div>
-        <div class="footer">
-          <p>© ${new Date().getFullYear()} Samrudhi Trust. All rights reserved.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  await connectDB();
 
-  return sendEmail({
+  const settings = await SiteSettings.findOne();
+  const orgName = settings?.organizationName || "Our Organization";
+  const orgEmail = settings?.email || "support@example.org";
+  const orgPhone = settings?.phone || "";
+  const baseUrl = getBaseUrl() || "http://localhost:3000";
+
+  return sendEmailHelper({
     to: email,
-    subject: "Payment Failed - Samrudhi Trust",
-    html,
+    subject: `Payment Failed - ${orgName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>${getEmailStyles()}</style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <img src="${baseUrl}/logo.svg" alt="${orgName}" class="logo" onerror="this.style.display='none'" />
+          </div>
+          <div class="content">
+            <h1 class="title">Payment Could Not Be Processed</h1>
+            <p class="text">Dear ${name},</p>
+            <p class="text">We're sorry, but your payment could not be processed.</p>
+            
+            <div class="details-box">
+              <div class="detail-row">
+                <span class="detail-label">Amount</span>
+                <span class="detail-value">₹${amount.toLocaleString("en-IN")}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Order ID</span>
+                <span class="detail-value">${orderId}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Reason</span>
+                <span class="detail-value">${failureReason}</span>
+              </div>
+            </div>
+            
+            <div class="info-box">
+              <p class="text" style="margin: 0; font-size: 14px;">If money was deducted from your account, it will be automatically refunded within 5-7 business days.</p>
+            </div>
+            
+            <div style="text-align: center; margin: 24px 0;">
+              <a href="${baseUrl}/donation" class="button">Try Again</a>
+            </div>
+            
+            <p class="text" style="margin-top: 32px; font-size: 14px; color: #6b7280;">If you continue to face issues, please contact us at <a href="mailto:${orgEmail}" style="color: #2563eb; text-decoration: none;">${orgEmail}</a></p>
+          </div>
+          <div class="footer">
+            <p style="margin: 0 0 8px 0;">© ${new Date().getFullYear()} ${orgName}. All rights reserved.</p>
+            ${orgEmail ? `<p style="margin: 0;">${orgEmail}${orgPhone ? ` • ${orgPhone}` : ""}</p>` : ""}
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
   });
 }
 
 /**
- * Send payment success notification with invoice
+ * Send payment success notification
  */
 export async function sendPaymentSuccessEmail(
   email: string,
@@ -116,110 +186,159 @@ export async function sendPaymentSuccessEmail(
   amount: number,
   invoiceNumber: string,
   paymentDate: Date,
-  needs80G: boolean
+  needs80G: boolean,
+  invoicePDF?: Buffer
 ) {
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #28a745; color: white; padding: 20px; text-align: center; }
-        .content { padding: 20px; background-color: #f9f9f9; }
-        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
-        .invoice-box { background-color: white; padding: 15px; border: 1px solid #ddd; margin: 15px 0; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>✓ Payment Successful</h1>
-        </div>
-        <div class="content">
-          <p>Dear ${name},</p>
-          <p>Thank you for your generous contribution to Samrudhi Trust!</p>
-          <div class="invoice-box">
-            <p><strong>Payment Receipt</strong></p>
-            <p>Invoice Number: ${invoiceNumber}</p>
-            <p>Amount: ₹${amount}</p>
-            <p>Date: ${paymentDate.toLocaleDateString("en-IN")}</p>
-            ${needs80G ? "<p><strong>80G Certificate will be sent separately</strong></p>" : ""}
-          </div>
-          <p>Your payment has been successfully processed and your invoice is attached to this email.</p>
-          <p>If you have any questions, please contact us at ${process.env.SUPPORT_EMAIL || "support@samrudhitrust.org"}</p>
-        </div>
-        <div class="footer">
-          <p>© ${new Date().getFullYear()} Samrudhi Trust. All rights reserved.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  await connectDB();
 
-  return sendEmail({
+  const settings = await SiteSettings.findOne();
+  const orgName = settings?.organizationName || "Our Organization";
+  const orgEmail = settings?.email || "support@example.org";
+  const orgPhone = settings?.phone || "";
+  const baseUrl = getBaseUrl() || "http://localhost:3000";
+
+  return sendEmailHelper({
     to: email,
-    subject: `Payment Receipt - ${invoiceNumber} - Samrudhi Trust`,
-    html,
+    subject: `Payment Successful - ${orgName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>${getEmailStyles()}</style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <img src="${baseUrl}/logo.svg" alt="${orgName}" class="logo" onerror="this.style.display='none'" />
+          </div>
+          <div class="content">
+            <h1 class="title">Payment Received Successfully</h1>
+            <p class="text">Dear ${name},</p>
+            <p class="text">Thank you for your payment. We have successfully received your contribution of ₹${amount.toLocaleString("en-IN")}.</p>
+            
+            <div class="details-box">
+              <div class="detail-row">
+                <span class="detail-label">Amount Paid</span>
+                <span class="detail-value">₹${amount.toLocaleString("en-IN")}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Invoice Number</span>
+                <span class="detail-value">${invoiceNumber}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Payment Date</span>
+                <span class="detail-value">${new Date(paymentDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span>
+              </div>
+            </div>
+            
+            ${
+              needs80G
+                ? `
+            <div class="info-box">
+              <strong>80G Tax Certificate:</strong> Your 80G tax exemption certificate has been generated and is attached to this email.
+            </div>
+            `
+                : ""
+            }
+            
+            <p class="text">Your ${needs80G ? "80G certificate" : "invoice"} is attached to this email for your records.</p>
+            
+            <p class="text" style="margin-top: 20px; font-size: 13px; color: #666;">If you have any questions, please contact us at <a href="mailto:${orgEmail}" style="color: #000; text-decoration: underline;">${orgEmail}</a>${orgPhone ? ` or call ${orgPhone}` : ""}.</p>
+          </div>
+          <div class="footer">
+            <p style="margin: 0;">© ${new Date().getFullYear()} ${orgName}. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    attachments: invoicePDF
+      ? [
+          {
+            filename: `Invoice-${invoiceNumber}.pdf`,
+            content: invoicePDF,
+            contentType: "application/pdf",
+          },
+        ]
+      : undefined,
   });
 }
 
 /**
- * Send refund notification to donor
+ * Send refund notification
  */
-export async function sendRefundNotificationEmail(
+export async function sendRefundEmail(
   email: string,
   name: string,
   amount: number,
-  refundReason: string,
-  refundId: string
+  refundId: string,
+  refundReason: string
 ) {
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #ffc107; color: #333; padding: 20px; text-align: center; }
-        .content { padding: 20px; background-color: #f9f9f9; }
-        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>Refund Initiated</h1>
-        </div>
-        <div class="content">
-          <p>Dear ${name},</p>
-          <p>We have initiated a refund for your payment.</p>
-          <p><strong>Refund Details:</strong></p>
-          <ul>
-            <li>Amount: ₹${amount}</li>
-            <li>Refund ID: ${refundId}</li>
-            <li>Reason: ${refundReason}</li>
-          </ul>
-          <p>The refund will be processed to your original payment method within 5-7 business days.</p>
-          <p>If you have any questions, please contact us at ${process.env.SUPPORT_EMAIL || "support@samrudhitrust.org"}</p>
-        </div>
-        <div class="footer">
-          <p>© ${new Date().getFullYear()} Samrudhi Trust. All rights reserved.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  await connectDB();
 
-  return sendEmail({
+  const settings = await SiteSettings.findOne();
+  const orgName = settings?.organizationName || "Our Organization";
+  const orgEmail = settings?.email || "support@example.org";
+  const orgPhone = settings?.phone || "";
+  const baseUrl = getBaseUrl() || "http://localhost:3000";
+
+  return sendEmailHelper({
     to: email,
-    subject: "Refund Initiated - Samrudhi Trust",
-    html,
+    subject: `Refund Initiated - ${orgName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>${getEmailStyles()}</style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <img src="${baseUrl}/logo.svg" alt="${orgName}" class="logo" onerror="this.style.display='none'" />
+          </div>
+          <div class="content">
+            <h1 class="title">Refund Initiated</h1>
+            <p class="text">Dear ${name},</p>
+            <p class="text">We have initiated a refund for your payment.</p>
+            
+            <div class="details-box">
+              <div class="detail-row">
+                <span class="detail-label">Amount</span>
+                <span class="detail-value">₹${amount.toLocaleString("en-IN")}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Refund ID</span>
+                <span class="detail-value">${refundId}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Reason</span>
+                <span class="detail-value">${refundReason}</span>
+              </div>
+            </div>
+            
+            <div class="info-box">
+              <p class="text" style="margin: 0; font-size: 14px;">The refund will be processed to your original payment method within 5-7 business days.</p>
+            </div>
+            
+            <p class="text" style="margin-top: 32px; font-size: 14px; color: #6b7280;">If you have any questions, please contact us at <a href="mailto:${orgEmail}" style="color: #2563eb; text-decoration: none;">${orgEmail}</a></p>
+          </div>
+          <div class="footer">
+            <p style="margin: 0 0 8px 0;">© ${new Date().getFullYear()} ${orgName}. All rights reserved.</p>
+            ${orgEmail ? `<p style="margin: 0;">${orgEmail}${orgPhone ? ` • ${orgPhone}` : ""}</p>` : ""}
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
   });
 }
 
 /**
- * Send alert to admin for payment requiring intervention
+ * Send admin alert for payment requiring intervention
  */
 export async function sendAdminPaymentAlertEmail(
   paymentId: string,
@@ -228,110 +347,66 @@ export async function sendAdminPaymentAlertEmail(
   donorName: string,
   issue: string
 ) {
-  const adminEmail = process.env.ADMIN_EMAIL || "admin@samrudhitrust.org";
+  await connectDB();
 
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #dc3545; color: white; padding: 20px; text-align: center; }
-        .content { padding: 20px; background-color: #f9f9f9; }
-        .alert-box { background-color: #fff3cd; border: 2px solid #ffc107; padding: 15px; margin: 15px 0; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>⚠️ Payment Alert - Manual Intervention Required</h1>
-        </div>
-        <div class="content">
-          <div class="alert-box">
-            <p><strong>CRITICAL: Payment requires manual intervention</strong></p>
-            <p>Payment ID: ${paymentId}</p>
-            <p>Amount: ₹${amount}</p>
-            <p>Donor: ${donorName} (${donorEmail})</p>
-            <p>Issue: ${issue}</p>
-          </div>
-          <p><strong>Action Required:</strong></p>
-          <ol>
-            <li>Log in to admin panel</li>
-            <li>Navigate to Payment Reconciliation</li>
-            <li>Review payment details and Razorpay dashboard</li>
-            <li>Contact donor if necessary</li>
-            <li>Process refund if money was deducted but not captured</li>
-          </ol>
-          <p><a href="${process.env.NEXT_PUBLIC_BASE_URL}/admin/payments">Go to Payment Management</a></p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  const settings = await SiteSettings.findOne();
+  const orgName = settings?.organizationName || "Our Organization";
+  const baseUrl = getBaseUrl() || "http://localhost:3000";
+  const adminEmail =
+    process.env.ADMIN_EMAIL || settings?.email || "admin@example.org";
 
-  return sendEmail({
+  return sendEmailHelper({
     to: adminEmail,
-    subject: `🚨 URGENT: Payment #${paymentId} Requires Intervention`,
-    html,
-  });
-}
-
-/**
- * Send payment stuck notification to donor
- */
-export async function sendPaymentStuckEmail(
-  email: string,
-  name: string,
-  amount: number,
-  orderId: string
-) {
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #ffc107; color: #333; padding: 20px; text-align: center; }
-        .content { padding: 20px; background-color: #f9f9f9; }
-        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>Payment Under Review</h1>
+    subject: `Payment Alert: Manual Intervention Required - ${orgName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>${getEmailStyles()}</style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <img src="${baseUrl}/logo.svg" alt="${orgName}" class="logo" onerror="this.style.display='none'" />
+          </div>
+          <div class="content">
+            <h1 class="title">Payment Alert - Manual Intervention Required</h1>
+            
+            <div class="warning-box">
+              <p class="text" style="margin: 0; font-size: 14px;"><strong>Issue:</strong> ${issue}</p>
+            </div>
+            
+            <div class="details-box">
+              <div class="detail-row">
+                <span class="detail-label">Payment ID</span>
+                <span class="detail-value">${paymentId}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Amount</span>
+                <span class="detail-value">₹${amount.toLocaleString("en-IN")}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Donor Name</span>
+                <span class="detail-value">${donorName}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Donor Email</span>
+                <span class="detail-value">${donorEmail}</span>
+              </div>
+            </div>
+            
+            <div style="text-align: center; margin: 24px 0;">
+              <a href="${baseUrl}/admin/payments/reconciliation" class="button">View Payment</a>
+            </div>
+          </div>
+          <div class="footer">
+            <p style="margin: 0;">© ${new Date().getFullYear()} ${orgName}. All rights reserved.</p>
+          </div>
         </div>
-        <div class="content">
-          <p>Dear ${name},</p>
-          <p>We noticed that your payment is under review.</p>
-          <p><strong>Payment Details:</strong></p>
-          <ul>
-            <li>Amount: ₹${amount}</li>
-            <li>Order ID: ${orderId}</li>
-          </ul>
-          <p>If money was deducted from your account but you haven't received a confirmation, please don't worry. We are investigating this payment.</p>
-          <p><strong>What happens next:</strong></p>
-          <ul>
-            <li>Our team will verify the payment status with our payment gateway</li>
-            <li>If the payment was successful, you'll receive your receipt within 24 hours</li>
-            <li>If there was an issue, we'll process a full refund within 5-7 business days</li>
-          </ul>
-          <p>You can check your payment status by contacting us at ${process.env.SUPPORT_EMAIL || "support@samrudhitrust.org"} with your Order ID.</p>
-          <p>We apologize for any inconvenience and appreciate your patience.</p>
-        </div>
-        <div class="footer">
-          <p>© ${new Date().getFullYear()} Samrudhi Trust. All rights reserved.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-
-  return sendEmail({
-    to: email,
-    subject: "Payment Under Review - Samrudhi Trust",
-    html,
+      </body>
+      </html>
+    `,
   });
 }

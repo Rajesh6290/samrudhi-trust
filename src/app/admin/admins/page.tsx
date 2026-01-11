@@ -54,6 +54,14 @@ const AVAILABLE_PERMISSIONS = [
   { id: "content", label: "Content", icon: "Globe" },
   { id: "feedback", label: "Feedback", icon: "MessageSquare" },
   { id: "contact", label: "Contact", icon: "Mail" },
+  { id: "faqs", label: "FAQs", icon: "HelpCircle" },
+  { id: "newsletter", label: "Newsletter", icon: "Mail" },
+  { id: "blog_comments", label: "Blog Comments", icon: "MessageCircle" },
+  { id: "notifications", label: "Notifications", icon: "Bell" },
+  { id: "payments", label: "Payments", icon: "CreditCard" },
+  { id: "admins", label: "Admins", icon: "Shield" },
+  { id: "audit_logs", label: "Audit Logs", icon: "Activity" },
+  { id: "profile", label: "Profile", icon: "UserCog" },
   { id: "settings", label: "Settings", icon: "Settings" },
 ];
 
@@ -656,6 +664,7 @@ export default function SubAdminsPage() {
                     >
                       <option value="subadmin">Sub Admin</option>
                       <option value="admin">Admin</option>
+                      <option value="member">Member</option>
                     </select>
                   </div>
 

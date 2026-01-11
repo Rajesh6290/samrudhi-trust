@@ -4,8 +4,11 @@ import MemberPaymentDrawer from "@/features/components/admin/MemberPaymentDrawer
 import QRScanner from "@/features/components/admin/QRScanner";
 import useMutation from "@/features/hooks/useMutation";
 import useSwr from "@/features/hooks/useSwr";
+import { Dialog } from "@mui/material";
 import { ErrorMessage, Field, Form, Formik } from "formik";
 import {
+  AlertCircle,
+  ArrowDownRight,
   ArrowLeft,
   ArrowUpRight,
   BadgeCheck,
@@ -13,7 +16,6 @@ import {
   CheckCircle2,
   Clock,
   CreditCard,
-  DollarSign,
   Download,
   Eye,
   Filter,
@@ -25,8 +27,10 @@ import {
   Receipt,
   RefreshCw,
   Search,
+  TrendingDown,
   TrendingUp,
   Users,
+  Wallet,
   X,
   XCircle,
 } from "lucide-react";
@@ -35,9 +39,16 @@ import { startTransition, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import * as Yup from "yup";
 
-interface Payment {
+type DateRangeOption =
+  | "last-year"
+  | "last-6-months"
+  | "current-month"
+  | "custom";
+
+interface Transaction {
   _id: string;
-  paymentType: "member" | "donation";
+  transactionType: "incoming" | "outgoing";
+  paymentType?: "member" | "donation";
   member?: {
     _id: string;
     name: string;
@@ -47,9 +58,11 @@ interface Payment {
   donorName?: string;
   donorEmail?: string;
   donorPhone?: string;
+  recipientName?: string;
+  recipientPhone?: string;
   amount: number;
   month?: string;
-  paymentDate: string;
+  transactionDate: string;
   status: "pending" | "completed" | "failed";
   invoiceNumber?: string;
   paymentMethod?: string;
@@ -57,12 +70,22 @@ interface Payment {
   needs80G: boolean;
   certificateNumber80G?: string;
   panCard?: string;
+  purpose?: string;
+  category?: string;
+  payoutId?: string;
+  reconciliationStatus?:
+    | "not_required"
+    | "pending"
+    | "reconciled"
+    | "discrepancy";
+  reconciliationNotes?: string;
+  lastReconciliationDate?: string;
 }
 
 export default function AdminPaymentsPage() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<
-    "all" | "members" | "donations" | "80g" | "payouts"
+    "all" | "incoming" | "outgoing" | "members" | "donations" | "80g"
   >("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(
@@ -71,19 +94,25 @@ export default function AdminPaymentsPage() {
   const [statusFilter, setStatusFilter] = useState<
     "all" | "completed" | "pending" | "failed"
   >("all");
+  const [periodFilter, setPeriodFilter] = useState<
+    "all" | "year" | "month" | "week"
+  >("all");
   const [page, setPage] = useState(1);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isPayoutModalOpen, setIsPayoutModalOpen] = useState(false);
   const [qrScanData, setQrScanData] = useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
+  const [loadingInvoiceId, setLoadingInvoiceId] = useState<string | null>(null);
+  const [loadingRetryId, setLoadingRetryId] = useState<string | null>(null);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const pageLimit = 15;
-
+  const { mutation } = useMutation();
   useEffect(() => {
     const qrData = searchParams.get("qrScan");
     if (qrData) {
       startTransition(() => {
-        setActiveTab("payouts");
+        setActiveTab("outgoing");
         setQrScanData(qrData);
         setIsPayoutModalOpen(true);
       });
@@ -91,81 +120,155 @@ export default function AdminPaymentsPage() {
     }
   }, [searchParams]);
 
-  // Build query params that update when dependencies change
+  // Build query params
   const queryParams = (() => {
     let params = `page=${page}&limit=${pageLimit}`;
-    if (activeTab === "members") params += "&paymentType=member";
-    else if (activeTab === "donations") params += "&paymentType=donation";
-    else if (activeTab === "80g") params += "&needs80G=true";
+    if (activeTab === "incoming") params += "&transactionType=incoming";
+    else if (activeTab === "outgoing") params += "&transactionType=outgoing";
+    else if (activeTab === "members")
+      params += "&transactionType=incoming&paymentType=member";
+    else if (activeTab === "donations")
+      params += "&transactionType=incoming&paymentType=donation";
+    else if (activeTab === "80g")
+      params += "&transactionType=incoming&needs80G=true";
     if (statusFilter !== "all") params += `&status=${statusFilter}`;
+    if (periodFilter !== "all") params += `&period=${periodFilter}`;
     return params;
   })();
 
-  const { data: paymentsData, isLoading: paymentsLoading } = useSwr(
-    activeTab === "payouts" ? null : `payments?${queryParams}`
-  );
-  const { data: payoutsData } = useSwr(
-    activeTab === "payouts" ? "payouts" : null
-  );
+  const {
+    data: transactionsData,
+    isLoading: transactionsLoading,
+    mutate,
+  } = useSwr(`transactions?${queryParams}`);
 
-  const payments = (paymentsData?.payments || []) as Payment[];
-  const pagination = paymentsData?.pagination;
-  const payouts = payoutsData?.payouts || [];
-
-  const analytics = {
-    total: payments.length,
-    totalAmount: payments.reduce(
-      (sum, p) => sum + (p.status === "completed" ? p.amount : 0),
-      0
-    ),
-    completed: payments.filter((p) => p.status === "completed").length,
-    pending: payments.filter((p) => p.status === "pending").length,
-    members: payments.filter((p) => p.paymentType === "member").length,
-    donations: payments.filter((p) => p.paymentType === "donation").length,
-    with80G: payments.filter((p) => p.needs80G && p.certificateNumber80G)
-      .length,
+  const transactions = (transactionsData?.transactions || []) as Transaction[];
+  const pagination = transactionsData?.pagination;
+  const analytics = transactionsData?.analytics?.overview || {
+    incoming: {
+      total: 0,
+      completed: 0,
+      count: 0,
+      completedCount: 0,
+      average: 0,
+    },
+    outgoing: {
+      total: 0,
+      completed: 0,
+      count: 0,
+      completedCount: 0,
+      average: 0,
+    },
+    netBalance: 0,
+    cert80GCount: 0,
   };
-
-  const filteredPayments = payments.filter((p) => {
+  const filteredTransactions = transactions.filter((t) => {
     const searchLower = searchQuery.toLowerCase();
-    const name = p.paymentType === "member" ? p.member?.name : p.donorName;
-    const email = p.paymentType === "member" ? p.member?.email : p.donorEmail;
-    return (
-      name?.toLowerCase().includes(searchLower) ||
-      email?.toLowerCase().includes(searchLower) ||
-      p.invoiceNumber?.toLowerCase().includes(searchLower) ||
-      p.certificateNumber80G?.toLowerCase().includes(searchLower)
-    );
+    if (t.transactionType === "incoming") {
+      const name = t.paymentType === "member" ? t.member?.name : t.donorName;
+      const email = t.paymentType === "member" ? t.member?.email : t.donorEmail;
+      return (
+        name?.toLowerCase().includes(searchLower) ||
+        email?.toLowerCase().includes(searchLower) ||
+        t.invoiceNumber?.toLowerCase().includes(searchLower) ||
+        t.certificateNumber80G?.toLowerCase().includes(searchLower)
+      );
+    } else {
+      return (
+        t.recipientName?.toLowerCase().includes(searchLower) ||
+        t.purpose?.toLowerCase().includes(searchLower) ||
+        t.invoiceNumber?.toLowerCase().includes(searchLower) ||
+        t.payoutId?.toLowerCase().includes(searchLower)
+      );
+    }
   });
 
-  const downloadInvoice = async (paymentId: string) => {
+  const exportTransactionHistoryPDF = async (
+    option: DateRangeOption,
+    customRange?: { start: string; end: string }
+  ) => {
     try {
-      const response = await fetch(`/api/payments/invoice/${paymentId}`, {
-        credentials: "include",
-      });
+      const now = new Date();
+      let startDate: Date;
+      let endDate: Date = now;
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.invoiceHTML) {
-          const invoiceWindow = window.open("", "_blank");
-          if (invoiceWindow) {
-            invoiceWindow.document.write(data.invoiceHTML);
-            invoiceWindow.document.close();
-          } else {
-            toast.error("Please allow pop-ups to view invoice");
-          }
-        } else {
-          toast.error("Failed to generate invoice");
-        }
-      } else {
-        toast.error("Failed to download invoice");
+      switch (option) {
+        case "current-month":
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+        case "last-6-months":
+          startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+          break;
+        case "last-year":
+          startDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+          break;
+        case "custom":
+          if (!customRange) return;
+          startDate = new Date(customRange.start);
+          endDate = new Date(customRange.end);
+          break;
+        default:
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
       }
+
+      const dateRangeLabel =
+        option === "current-month"
+          ? "Current Month"
+          : option === "last-6-months"
+            ? "Last 6 Months"
+            : option === "last-year"
+              ? "Last Year"
+              : `${startDate.toLocaleDateString("en-IN")} - ${endDate.toLocaleDateString("en-IN")}`;
+
+      // Call the API to generate PDF
+      const pdfUrl = `/api/transactions/export-pdf?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}&label=${encodeURIComponent(dateRangeLabel)}`;
+      window.open(pdfUrl, "_blank");
+
+      toast.success("PDF export opened in new tab");
+      setShowExportDialog(false);
     } catch (error) {
-      console.error("Error downloading invoice:", error);
-      toast.error("Failed to download invoice");
+      console.error("Export error:", error);
+      toast.error("Failed to export PDF");
     }
   };
 
+  const downloadInvoice = async (transactionId: string) => {
+    setLoadingInvoiceId(transactionId);
+    try {
+      // Open invoice in new tab
+      const invoiceUrl = `/api/payments/invoice/${transactionId}`;
+      window.open(invoiceUrl, "_blank");
+
+      toast.success("Invoice opened in new tab");
+    } catch (error) {
+      console.error("Error opening invoice:", error);
+      toast.error("Failed to open invoice");
+    } finally {
+      setLoadingInvoiceId(null);
+    }
+  };
+
+  const handleSendRetryEmail = async (paymentId: string) => {
+    setLoadingRetryId(paymentId);
+    try {
+      const response = await mutation(`payments/${paymentId}/send-retry`, {
+        method: "POST",
+      });
+
+      if (response?.status === 200 || response?.status === 201) {
+        toast.success("Retry email sent successfully!");
+        // Optionally refresh the data
+        mutate();
+      }
+    } catch (error) {
+      console.error("Retry email error:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to send retry email"
+      );
+    } finally {
+      setLoadingRetryId(null);
+    }
+  };
   const handleQRScan = async (qrData: string) => {
     setIsScannerOpen(false);
     setQrScanData(qrData);
@@ -178,12 +281,13 @@ export default function AdminPaymentsPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
-              Payment Dashboard
+            <h1 className="text-4xl font-bold bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
+              Transaction Dashboard
             </h1>
             <p className="text-gray-600 flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
-              Real-time payment analytics and management
+              Complete financial overview with incoming and outgoing
+              transactions
             </p>
           </div>
           <div className="flex gap-3">
@@ -191,89 +295,117 @@ export default function AdminPaymentsPage() {
               onClick={() =>
                 (window.location.href = "/admin/payments/reconciliation")
               }
-              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white px-5 py-2.5 rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-medium"
+              className="flex items-center gap-2 bg-linear-to-r from-purple-600 to-purple-700 text-white px-5 py-2.5 rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-medium"
             >
               <RefreshCw size={18} />
-              Verify Payments
+              Reconcile
             </button>
-            <button
+            {/* <button
               onClick={() => setIsScannerOpen(true)}
-              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-5 py-2.5 rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-medium"
+              className="flex items-center gap-2 bg-linear-to-r from-blue-600 to-blue-700 text-white px-5 py-2.5 rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-medium"
             >
               <QrCode size={18} />
               Scan QR
+            </button> */}
+            <button
+              onClick={() => {
+                setQrScanData("");
+                setIsPayoutModalOpen(true);
+              }}
+              className="flex items-center gap-2 bg-linear-to-r from-orange-600 to-red-600 text-white px-5 py-2.5 rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-medium"
+            >
+              <Plus size={18} />
+              Add Payout
+            </button>
+            <button
+              onClick={() => setShowExportDialog(true)}
+              className="flex items-center gap-2 bg-linear-to-r from-green-600 to-emerald-600 text-white px-5 py-2.5 rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-medium"
+            >
+              <Download size={18} />
+              Export PDF
             </button>
           </div>
         </div>
 
         {/* Analytics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-6 border border-gray-100 hover:border-blue-200 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-transparent rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-500" />
+          {/* Net Balance Card */}
+          <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-6 border-2 border-gray-100 hover:border-blue-200 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-br from-blue-500/10 to-transparent rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-500" />
             <div className="relative">
               <div className="flex items-center justify-between mb-4">
-                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform duration-300">
-                  <DollarSign className="w-7 h-7 text-white" />
+                <div className="w-14 h-14 bg-linear-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform duration-300">
+                  <Wallet className="w-7 h-7 text-white" />
                 </div>
                 <span className="text-sm font-semibold text-gray-500 bg-blue-50 px-3 py-1 rounded-full">
-                  Total
+                  Net
                 </span>
               </div>
               <div className="text-3xl font-bold text-gray-900 mb-1">
-                ₹{analytics.totalAmount.toLocaleString("en-IN")}
+                ₹{analytics.netBalance.toLocaleString("en-IN")}
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                {analytics.completed} completed transactions
-              </div>
+              <div className="text-sm text-gray-600">Current balance</div>
             </div>
           </div>
 
-          <div
-            onClick={() => setIsDrawerOpen(true)}
-            className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-6 border border-gray-100 hover:border-green-200 cursor-pointer relative overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-500/10 to-transparent rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-500" />
+          {/* Incoming Card */}
+          <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-6 border-2 border-gray-100 hover:border-green-200 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-br from-green-500/10 to-transparent rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-500" />
             <div className="relative">
               <div className="flex items-center justify-between mb-4">
-                <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform duration-300">
-                  <Users className="w-7 h-7 text-white" />
+                <div className="w-14 h-14 bg-linear-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform duration-300">
+                  <ArrowDownRight className="w-7 h-7 text-white" />
                 </div>
-                <button className="flex items-center gap-1 text-xs text-green-600 hover:text-green-700 font-semibold bg-green-50 px-3 py-1.5 rounded-full hover:bg-green-100 transition-colors">
+                <button
+                  onClick={() => setActiveTab("incoming")}
+                  className="flex items-center gap-1 text-xs text-green-600 hover:text-green-700 font-semibold bg-green-50 px-3 py-1.5 rounded-full hover:bg-green-100 transition-colors"
+                >
                   <Eye className="w-3 h-3" />
                   View
                 </button>
               </div>
               <div className="text-3xl font-bold text-gray-900 mb-1">
-                {analytics.members}
+                ₹{analytics.incoming.completed.toLocaleString("en-IN")}
               </div>
-              <div className="text-sm text-gray-600">Member subscriptions</div>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                {analytics.incoming.completedCount} transactions
+              </div>
             </div>
           </div>
 
-          <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-6 border border-gray-100 hover:border-purple-200 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-transparent rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-500" />
+          {/* Outgoing Card */}
+          <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-6 border-2 border-gray-100 hover:border-orange-200 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-br from-orange-500/10 to-transparent rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-500" />
             <div className="relative">
               <div className="flex items-center justify-between mb-4">
-                <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform duration-300">
-                  <Gift className="w-7 h-7 text-white" />
+                <div className="w-14 h-14 bg-linear-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/30 group-hover:scale-110 transition-transform duration-300">
+                  <ArrowUpRight className="w-7 h-7 text-white" />
                 </div>
-                <span className="text-sm font-semibold text-gray-500 bg-purple-50 px-3 py-1 rounded-full">
-                  Public
-                </span>
+                <button
+                  onClick={() => setActiveTab("outgoing")}
+                  className="flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700 font-semibold bg-orange-50 px-3 py-1.5 rounded-full hover:bg-orange-100 transition-colors"
+                >
+                  <Eye className="w-3 h-3" />
+                  View
+                </button>
               </div>
               <div className="text-3xl font-bold text-gray-900 mb-1">
-                {analytics.donations}
+                ₹{analytics.outgoing.completed.toLocaleString("en-IN")}
               </div>
-              <div className="text-sm text-gray-600">Generous donations</div>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <TrendingDown className="w-4 h-4 text-orange-500" />
+                {analytics.outgoing.completedCount} payouts
+              </div>
             </div>
           </div>
 
-          <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-6 border border-gray-100 hover:border-yellow-200 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-yellow-500/10 to-transparent rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-500" />
+          {/* 80G Certificates Card */}
+          <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-6 border-2 border-gray-100 hover:border-yellow-200 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-br from-yellow-500/10 to-transparent rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-500" />
             <div className="relative">
               <div className="flex items-center justify-between mb-4">
-                <div className="w-14 h-14 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl flex items-center justify-center shadow-lg shadow-yellow-500/30 group-hover:scale-110 transition-transform duration-300">
+                <div className="w-14 h-14 bg-linear-to-br from-yellow-500 to-yellow-600 rounded-2xl flex items-center justify-center shadow-lg shadow-yellow-500/30 group-hover:scale-110 transition-transform duration-300">
                   <BadgeCheck className="w-7 h-7 text-white" />
                 </div>
                 <span className="text-sm font-semibold text-gray-500 bg-yellow-50 px-3 py-1 rounded-full">
@@ -281,7 +413,7 @@ export default function AdminPaymentsPage() {
                 </span>
               </div>
               <div className="text-3xl font-bold text-gray-900 mb-1">
-                {analytics.with80G}
+                {analytics.cert80GCount}
               </div>
               <div className="text-sm text-gray-600">
                 Tax certificates issued
@@ -291,28 +423,41 @@ export default function AdminPaymentsPage() {
         </div>
 
         {/* Main Content Card */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-100 overflow-hidden">
           {/* Tabs */}
-          <div className="bg-gradient-to-r from-gray-50 to-blue-50 p-6 border-b border-gray-200">
+          <div className="bg-linear-to-r from-gray-50 to-blue-50 p-6 border-b-2 border-gray-200">
             <div className="flex flex-wrap gap-3 mb-6">
               {[
                 {
                   id: "all",
-                  label: "All Payments",
+                  label: "All Transactions",
                   icon: Receipt,
                   color: "blue",
+                },
+                {
+                  id: "incoming",
+                  label: "Incoming",
+                  icon: ArrowDownRight,
+                  color: "green",
+                },
+                {
+                  id: "outgoing",
+                  label: "Outgoing",
+                  icon: ArrowUpRight,
+                  color: "orange",
                 },
                 {
                   id: "members",
                   label: "Members",
                   icon: Users,
-                  color: "green",
+                  color: "purple",
+                  onClick: () => setIsDrawerOpen(true),
                 },
                 {
                   id: "donations",
                   label: "Donations",
                   icon: Gift,
-                  color: "purple",
+                  color: "indigo",
                 },
                 {
                   id: "80g",
@@ -320,22 +465,20 @@ export default function AdminPaymentsPage() {
                   icon: BadgeCheck,
                   color: "yellow",
                 },
-                {
-                  id: "payouts",
-                  label: "Payouts",
-                  icon: ArrowUpRight,
-                  color: "orange",
-                },
               ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => {
-                    setActiveTab(tab.id as typeof activeTab);
-                    setPage(1);
+                    if (tab.id === "members" && tab.onClick) {
+                      tab.onClick();
+                    } else {
+                      setActiveTab(tab.id as typeof activeTab);
+                      setPage(1);
+                    }
                   }}
                   className={`flex items-center gap-2 px-5 py-3 rounded-xl font-semibold transition-all duration-200 ${
                     activeTab === tab.id
-                      ? `bg-gradient-to-r from-${tab.color}-600 to-${tab.color}-700 text-white shadow-lg scale-105`
+                      ? `bg-linear-to-r from-${tab.color}-600 to-${tab.color}-700 text-white shadow-lg scale-105`
                       : "bg-white text-gray-700 hover:bg-gray-50 hover:scale-105 shadow-sm"
                   }`}
                 >
@@ -354,13 +497,13 @@ export default function AdminPaymentsPage() {
                   placeholder="Search by name, email, invoice number..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
+                  className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
                 />
               </div>
 
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2 px-5 py-3 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-300 transition-all font-medium"
+                className="flex items-center gap-2 px-5 py-3 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-300 transition-all font-medium text-gray-900"
               >
                 <Filter className="w-5 h-5" />
                 Filters
@@ -384,7 +527,7 @@ export default function AdminPaymentsPage() {
                     <X className="w-5 h-5" />
                   </button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Status
@@ -394,12 +537,29 @@ export default function AdminPaymentsPage() {
                       onChange={(e) =>
                         setStatusFilter(e.target.value as typeof statusFilter)
                       }
-                      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
                     >
                       <option value="all">All Status</option>
                       <option value="completed">✓ Completed</option>
                       <option value="pending">⏱ Pending</option>
                       <option value="failed">✗ Failed</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Period
+                    </label>
+                    <select
+                      value={periodFilter}
+                      onChange={(e) =>
+                        setPeriodFilter(e.target.value as typeof periodFilter)
+                      }
+                      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                    >
+                      <option value="all">All Time</option>
+                      <option value="year">📅 This Year</option>
+                      <option value="month">🗓️ This Month</option>
+                      <option value="week">📆 This Week</option>
                     </select>
                   </div>
                   {activeTab === "members" && (
@@ -411,7 +571,7 @@ export default function AdminPaymentsPage() {
                         type="month"
                         value={selectedMonth}
                         onChange={(e) => setSelectedMonth(e.target.value)}
-                        className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                       />
                     </div>
                   )}
@@ -422,23 +582,17 @@ export default function AdminPaymentsPage() {
 
           {/* Content Area */}
           <div className="overflow-x-auto">
-            {activeTab === "payouts" ? (
-              <PayoutsView
-                payouts={payouts}
-                onAddPayout={() => {
-                  setQrScanData("");
-                  setIsPayoutModalOpen(true);
-                }}
-                onScanQR={() => setIsScannerOpen(true)}
-              />
-            ) : paymentsLoading ? (
+            {transactionsLoading ? (
               <LoadingState />
-            ) : filteredPayments.length === 0 ? (
+            ) : filteredTransactions.length === 0 ? (
               <EmptyState />
             ) : (
-              <PaymentsTable
-                payments={filteredPayments}
+              <TransactionsTable
+                transactions={filteredTransactions}
                 onDownloadInvoice={downloadInvoice}
+                loadingInvoiceId={loadingInvoiceId}
+                loadingRetryId={loadingRetryId}
+                onSendRetryEmail={handleSendRetryEmail}
               />
             )}
           </div>
@@ -457,11 +611,6 @@ export default function AdminPaymentsPage() {
       </div>
 
       {/* Modals and Drawers */}
-      <MemberPaymentDrawer
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        selectedMonth={selectedMonth}
-      />
       <QRScanner
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
@@ -470,13 +619,204 @@ export default function AdminPaymentsPage() {
       {isPayoutModalOpen && (
         <PayoutModal
           qrData={qrScanData}
+          netBalance={analytics.netBalance}
           onClose={() => {
             setIsPayoutModalOpen(false);
             setQrScanData("");
           }}
         />
       )}
+
+      {/* Member Payment Drawer */}
+      <MemberPaymentDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        selectedMonth={selectedMonth}
+      />
+
+      {/* Export Date Range Dialog */}
+      <DateRangeDialog
+        open={showExportDialog}
+        onClose={() => setShowExportDialog(false)}
+        onExport={exportTransactionHistoryPDF}
+      />
     </div>
+  );
+}
+
+// Date Range Dialog Component
+function DateRangeDialog({
+  open,
+  onClose,
+  onExport,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onExport: (
+    option: DateRangeOption,
+    customRange?: { start: string; end: string }
+  ) => void;
+}) {
+  const [selectedOption, setSelectedOption] =
+    useState<DateRangeOption>("current-month");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+
+  const handleExport = () => {
+    if (selectedOption === "custom") {
+      if (!customStart || !customEnd) {
+        toast.error("Please select both start and end dates");
+        return;
+      }
+      if (new Date(customStart) > new Date(customEnd)) {
+        toast.error("Start date must be before end date");
+        return;
+      }
+      onExport(selectedOption, { start: customStart, end: customEnd });
+    } else {
+      onExport(selectedOption);
+    }
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-semibold text-gray-900">
+            Export Transaction History
+          </h3>
+          <button
+            onClick={onClose}
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
+        <p className="text-sm text-gray-600 mb-6">
+          Select a date range to export the transaction history as PDF
+        </p>
+
+        <div className="space-y-3 mb-6">
+          <label className="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
+            <input
+              type="radio"
+              name="dateRange"
+              value="current-month"
+              checked={selectedOption === "current-month"}
+              onChange={(e) =>
+                setSelectedOption(e.target.value as DateRangeOption)
+              }
+              className="w-4 h-4 text-blue-600"
+            />
+            <div>
+              <div className="font-medium text-gray-900">Current Month</div>
+              <div className="text-xs text-gray-500">
+                Export this month&apos;s transactions
+              </div>
+            </div>
+          </label>
+
+          <label className="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
+            <input
+              type="radio"
+              name="dateRange"
+              value="last-6-months"
+              checked={selectedOption === "last-6-months"}
+              onChange={(e) =>
+                setSelectedOption(e.target.value as DateRangeOption)
+              }
+              className="w-4 h-4 text-blue-600"
+            />
+            <div>
+              <div className="font-medium text-gray-900">Last 6 Months</div>
+              <div className="text-xs text-gray-500">
+                Export last 6 months transactions
+              </div>
+            </div>
+          </label>
+
+          <label className="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
+            <input
+              type="radio"
+              name="dateRange"
+              value="last-year"
+              checked={selectedOption === "last-year"}
+              onChange={(e) =>
+                setSelectedOption(e.target.value as DateRangeOption)
+              }
+              className="w-4 h-4 text-blue-600"
+            />
+            <div>
+              <div className="font-medium text-gray-900">Last Year</div>
+              <div className="text-xs text-gray-500">
+                Export last year&apos;s transactions
+              </div>
+            </div>
+          </label>
+
+          <label className="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
+            <input
+              type="radio"
+              name="dateRange"
+              value="custom"
+              checked={selectedOption === "custom"}
+              onChange={(e) =>
+                setSelectedOption(e.target.value as DateRangeOption)
+              }
+              className="w-4 h-4 text-blue-600"
+            />
+            <div className="flex-1">
+              <div className="font-medium text-gray-900 mb-3">
+                Custom Date Range
+              </div>
+              {selectedOption === "custom" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={customStart}
+                      onChange={(e) => setCustomStart(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      value={customEnd}
+                      onChange={(e) => setCustomEnd(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </label>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleExport}
+            className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Export PDF
+          </button>
+        </div>
+      </div>
+    </Dialog>
   );
 }
 
@@ -502,11 +842,11 @@ function LoadingState() {
 function EmptyState() {
   return (
     <div className="text-center py-20">
-      <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
+      <div className="w-24 h-24 bg-linear-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
         <Receipt className="w-12 h-12 text-gray-400" />
       </div>
       <p className="text-gray-900 text-xl font-semibold mb-2">
-        No payments found
+        No transactions found
       </p>
       <p className="text-gray-500">
         Try adjusting your filters or search criteria
@@ -515,119 +855,19 @@ function EmptyState() {
   );
 }
 
-// Payouts View Component
-function PayoutsView({
-  payouts,
-  onAddPayout,
-  onScanQR,
-}: {
-  payouts: any[];
-  onAddPayout: () => void;
-  onScanQR: () => void;
-}) {
-  return (
-    <div className="p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <div>
-          <h3 className="text-2xl font-bold text-gray-900">
-            Manual Payouts & Expenses
-          </h3>
-          <p className="text-gray-600 mt-1">
-            Track all manual payments and business expenses
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={onScanQR}
-            className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-5 py-2.5 rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-medium"
-          >
-            <QrCode size={18} />
-            Scan QR
-          </button>
-          <button
-            onClick={onAddPayout}
-            className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-700 text-white px-5 py-2.5 rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-medium"
-          >
-            <Plus size={18} />
-            Add Payout
-          </button>
-        </div>
-      </div>
-
-      {payouts.length === 0 ? (
-        <div className="text-center py-16 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl">
-          <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <ArrowUpRight className="w-10 h-10 text-orange-500" />
-          </div>
-          <p className="text-gray-700 font-semibold text-lg">
-            No payouts recorded yet
-          </p>
-          <p className="text-gray-500 mt-2">
-            Start by scanning a QR code or adding a manual entry
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {payouts.map((payout: any) => (
-            <div
-              key={payout._id}
-              className="bg-gradient-to-r from-white to-gray-50 rounded-xl border-2 border-gray-100 p-5 hover:shadow-lg transition-all duration-200 hover:border-orange-200"
-            >
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg">
-                    <ArrowUpRight className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <div className="font-bold text-gray-900 text-lg">
-                      {payout.recipientName}
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-                      <Phone className="w-4 h-4" />
-                      {payout.recipientPhone}
-                    </div>
-                    <div className="text-sm text-gray-600 mt-1">
-                      {payout.purpose}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col md:items-end gap-2">
-                  <div className="text-2xl font-bold text-gray-900">
-                    ₹{payout.amount.toLocaleString()}
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-semibold capitalize">
-                      {payout.category}
-                    </span>
-                    <span className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full font-semibold capitalize">
-                      {payout.paymentMethod.replace("_", " ")}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <Calendar className="w-3 h-3" />
-                    {new Date(payout.createdAt).toLocaleDateString("en-IN", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Payments Table Component
-function PaymentsTable({
-  payments,
+// Transactions Table Component
+function TransactionsTable({
+  transactions,
   onDownloadInvoice,
+  loadingInvoiceId,
+  loadingRetryId,
+  onSendRetryEmail,
 }: {
-  payments: Payment[];
+  transactions: Transaction[];
   onDownloadInvoice: (id: string) => void;
+  loadingInvoiceId: string | null;
+  loadingRetryId: string | null;
+  onSendRetryEmail: (paymentId: string) => Promise<void>;
 }) {
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -658,141 +898,201 @@ function PaymentsTable({
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
-        <thead className="bg-gradient-to-r from-gray-50 to-blue-50 border-y-2 border-gray-200">
+        <thead className="bg-linear-to-r from-gray-50 to-blue-50 border-y-2 border-gray-200">
           <tr>
-            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-              Donor/Member
-            </th>
-            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
               Type
             </th>
-            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+              Party
+            </th>
+            <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+              Details
+            </th>
+            <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
               Amount
             </th>
-            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
               Date
             </th>
-            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
               Invoice
             </th>
-            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-              80G
-            </th>
-            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
               Status
             </th>
-            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
               Actions
             </th>
           </tr>
         </thead>
         <tbody className="divide-y-2 divide-gray-100">
-          {payments.map((payment) => {
-            const name =
-              payment.paymentType === "member"
-                ? payment.member?.name
-                : payment.donorName;
-            const email =
-              payment.paymentType === "member"
-                ? payment.member?.email
-                : payment.donorEmail;
+          {transactions.map((transaction) => {
+            const isIncoming = transaction.transactionType === "incoming";
+            const name = isIncoming
+              ? transaction.paymentType === "member"
+                ? transaction.member?.name
+                : transaction.donorName
+              : transaction.recipientName;
+            const email = isIncoming
+              ? transaction.paymentType === "member"
+                ? transaction.member?.email
+                : transaction.donorEmail
+              : null;
+            const phone = isIncoming
+              ? transaction.paymentType === "member"
+                ? transaction.member?.phone
+                : transaction.donorPhone
+              : transaction.recipientPhone;
 
             return (
               <tr
-                key={payment._id}
-                className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all duration-200"
+                key={transaction._id}
+                className="hover:bg-linear-to-r hover:from-blue-50 hover:to-transparent transition-all duration-200"
               >
                 <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
-                      {name?.[0]?.toUpperCase() || "?"}
-                    </div>
-                    <div>
+                  {isIncoming ? (
+                    <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 border-2 border-green-200">
+                      <ArrowDownRight className="w-3.5 h-3.5" />
+                      {transaction.paymentType === "member"
+                        ? "Member"
+                        : "Donation"}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border-2 border-orange-200">
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                      Payout
+                    </span>
+                  )}
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex justify-center items-center gap-3">
+                    <div className="flex flex-col gap- items-center justify-center">
                       <div className="font-semibold text-gray-900">
                         {name || "N/A"}
                       </div>
-                      <div className="text-sm text-gray-500 flex items-center gap-1">
-                        <Mail className="w-3 h-3" />
-                        {email || "N/A"}
-                      </div>
+                      {email && (
+                        <div className="text-sm text-gray-500 flex items-center gap-1">
+                          <Mail className="w-3 h-3" />
+                          {email}
+                        </div>
+                      )}
+                      {phone && (
+                        <div className="text-sm text-gray-500 flex items-center gap-1">
+                          <Phone className="w-3 h-3" />
+                          {phone}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4">
-                  {payment.paymentType === "member" ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 border-2 border-green-200">
-                      <Users className="w-3.5 h-3.5" />
-                      Member
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 border-2 border-purple-200">
-                      <Gift className="w-3.5 h-3.5" />
-                      Donation
-                    </span>
-                  )}
-                </td>
-                <td className="px-6 py-4">
-                  <div className="font-bold text-gray-900 text-lg">
-                    ₹{payment.amount.toLocaleString("en-IN")}
-                  </div>
-                  {payment.month && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      {new Date(payment.month).toLocaleDateString("en-IN", {
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </div>
-                  )}
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-700">
-                    <Calendar className="w-4 h-4 text-gray-400" />
-                    {new Date(payment.paymentDate).toLocaleDateString("en-IN", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="text-xs font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                    {payment.invoiceNumber || "N/A"}
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  {payment.needs80G ? (
-                    <div>
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 border-2 border-yellow-200">
-                        <BadgeCheck className="w-3.5 h-3.5" />
-                        Yes
-                      </span>
-                      {payment.certificateNumber80G && (
-                        <div className="text-xs text-gray-500 mt-1 font-mono">
-                          {payment.certificateNumber80G}
+                <td className="px-6 py-4 text-center">
+                  {isIncoming ? (
+                    <div className="text-sm text-nowrap flex flex-col items-center justify-center text-gray-600">
+                      {transaction.month && (
+                        <div className="font-medium">
+                          {new Date(transaction.month).toLocaleDateString(
+                            "en-IN",
+                            {
+                              month: "short",
+                              year: "numeric",
+                            }
+                          )}
+                        </div>
+                      )}
+                      {transaction.needs80G && (
+                        <div className="flex items-center gap-1 text-xs text-yellow-700 bg-yellow-100 px-2 py-1 rounded-full mt-1 w-fit">
+                          <BadgeCheck className="w-3 h-3" />
+                          80G
                         </div>
                       )}
                     </div>
                   ) : (
+                    <div className="text-sm text-nowrap flex flex-col items-center justify-center text-gray-600">
+                      <div className="font-medium">{transaction.purpose}</div>
+                      {transaction.category && (
+                        <div className="text-xs capitalize bg-gray-100 px-2 py-1 rounded mt-1 w-fit">
+                          {transaction.category}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </td>
+                <td className="px-6 py-4">
+                  <div
+                    className={`font-bold text-lg ${
+                      isIncoming ? "text-green-600" : "text-orange-600"
+                    }`}
+                  >
+                    {isIncoming ? "+" : "-"}₹
+                    {transaction.amount.toLocaleString("en-IN")}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex items-center text-nowrap gap-2 text-sm text-gray-700">
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                    {new Date(transaction.transactionDate).toLocaleDateString(
+                      "en-IN",
+                      {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      }
+                    )}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  {transaction.invoiceNumber ? (
+                    <div className="text-xs w-fit text-nowrap font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                      {transaction.invoiceNumber}
+                    </div>
+                  ) : (
                     <span className="text-sm text-gray-400 font-medium">—</span>
+                  )}
+                  {transaction.certificateNumber80G && (
+                    <div className="text-xs w-fit text-nowrap font-mono text-yellow-700 bg-yellow-100 px-2 py-1 rounded mt-1">
+                      {transaction.certificateNumber80G}
+                    </div>
                   )}
                 </td>
                 <td className="px-6 py-4">
                   <span
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border-2 ${getStatusColor(payment.status)}`}
+                    className={`inline-flex w-fit text-nowrap items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border-2 ${getStatusColor(
+                      transaction.status
+                    )}`}
                   >
-                    {getStatusIcon(payment.status)}
-                    {payment.status.charAt(0).toUpperCase() +
-                      payment.status.slice(1)}
+                    {getStatusIcon(transaction.status)}
+                    {transaction.status.charAt(0).toUpperCase() +
+                      transaction.status.slice(1)}
                   </span>
                 </td>
-                <td className="px-6 py-4">
-                  {payment.status === "completed" && (
+                <td className="px-6 py-4   ">
+                  {transaction.status === "completed" && (
                     <button
-                      onClick={() => onDownloadInvoice(payment._id)}
-                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-600 hover:text-white bg-blue-50 hover:bg-gradient-to-r hover:from-blue-600 hover:to-blue-700 rounded-lg transition-all duration-200 hover:shadow-lg hover:scale-105"
+                      onClick={() => onDownloadInvoice(transaction._id)}
+                      disabled={loadingInvoiceId === transaction._id}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-blue-600 hover:text-white bg-blue-50 hover:bg-linear-to-r hover:from-blue-600 hover:to-blue-700 rounded-lg transition-all duration-200 hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                     >
-                      <Download className="w-4 h-4" />
-                      {payment.needs80G ? "80G" : "Invoice"}
+                      {loadingInvoiceId === transaction._id ? (
+                        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Download className="w-4 h-4" />
+                      )}
+                      {transaction.needs80G ? "80G" : "Invoice"}
+                    </button>
+                  )}
+                  {transaction.status === "pending" && (
+                    <button
+                      onClick={() => onSendRetryEmail(transaction._id)}
+                      disabled={loadingRetryId === transaction._id}
+                      className="inline-flex text-nowrap items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-orange-600 hover:text-white bg-orange-50 hover:bg-linear-to-r hover:from-orange-600 hover:to-orange-700 rounded-lg transition-all duration-200 hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loadingRetryId === transaction._id ? (
+                        <div className="w-4 h-4 border-2 border-orange-600 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Mail className="w-4 h-4" />
+                      )}
+                      Send Retry Email
                     </button>
                   )}
                 </td>
@@ -820,7 +1120,7 @@ function Pagination({
   onPageChange: (page: number) => void;
 }) {
   return (
-    <div className="p-6 border-t-2 border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50">
+    <div className="p-6 border-t-2 border-gray-200 bg-linear-to-r from-gray-50 to-blue-50">
       <div className="flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="text-sm text-gray-700 font-medium">
           Showing{" "}
@@ -851,7 +1151,7 @@ function Pagination({
                   onClick={() => onPageChange(pageNum)}
                   className={`px-4 py-2 text-sm font-bold rounded-lg transition-all duration-200 ${
                     currentPage === pageNum
-                      ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg scale-110"
+                      ? "bg-linear-to-r from-blue-600 to-blue-700 text-white shadow-lg scale-110"
                       : "text-gray-700 bg-white border-2 border-gray-300 hover:bg-gray-50 hover:border-blue-300 hover:scale-105"
                   }`}
                 >
@@ -877,9 +1177,11 @@ function Pagination({
 // Payout Modal Component
 function PayoutModal({
   qrData,
+  netBalance,
   onClose,
 }: {
   qrData: string;
+  netBalance: number;
   onClose: () => void;
 }) {
   const [paymentMode, setPaymentMode] = useState<"paynow" | "manual">("paynow");
@@ -912,7 +1214,12 @@ function PayoutModal({
     amount: Yup.number()
       .required("Amount is required")
       .min(1, "Amount must be at least ₹1")
-      .max(100000, "Amount cannot exceed ₹1,00,000"),
+      .max(100000, "Amount cannot exceed ₹1,00,000")
+      .test(
+        "balance-check",
+        `Amount cannot exceed available balance of ₹${netBalance.toLocaleString("en-IN")}`,
+        (value) => !value || value <= netBalance
+      ),
     purpose: Yup.string().required("Purpose is required"),
   });
 
@@ -923,7 +1230,12 @@ function PayoutModal({
       .required("Phone number is required"),
     amount: Yup.number()
       .required("Amount is required")
-      .min(1, "Amount must be at least ₹1"),
+      .min(1, "Amount must be at least ₹1")
+      .test(
+        "balance-check",
+        `Amount cannot exceed available balance of ₹${netBalance.toLocaleString("en-IN")}`,
+        (value) => !value || value <= netBalance
+      ),
     purpose: Yup.string().required("Purpose is required"),
     category: Yup.string().required("Category is required"),
     paymentMethod: Yup.string().required("Payment method is required"),
@@ -968,14 +1280,15 @@ function PayoutModal({
         description: values.purpose,
         order_id: order.id,
         handler: async (response: { razorpay_payment_id: string }) => {
-          const result = await createPayout("/api/payouts", {
+          const result = await createPayout("transactions", {
             method: "POST",
             body: {
+              transactionType: "outgoing",
               recipientName: shopkeeperInfo.name,
               recipientPhone: shopkeeperInfo.phone,
               amount: values.amount,
               purpose: values.purpose,
-              category: "supplies",
+              category: "purchase",
               paymentMethod: "upi",
               transactionId: response.razorpay_payment_id,
               qrData,
@@ -987,6 +1300,7 @@ function PayoutModal({
           if (result?.results?.success) {
             toast.success("Payment successful!");
             onClose();
+            window.location.reload();
           } else {
             toast.error("Payment recorded but failed to save");
           }
@@ -1009,27 +1323,29 @@ function PayoutModal({
   };
 
   const handleManualEntry = async (values: Record<string, string>) => {
-    const result = await createPayout("/api/payouts", {
+    const result = await createPayout("transactions", {
       method: "POST",
       body: {
+        transactionType: "outgoing",
         ...values,
         status: "completed",
-        qrData: "",
+        qrData: qrData || "",
       },
     });
 
     if (result?.results?.success) {
-      toast.success("Payment recorded successfully");
+      toast.success("Payout recorded successfully");
       onClose();
+      window.location.reload();
     } else {
-      toast.error(result?.results?.error || "Failed to record payment");
+      toast.error(result?.results?.error || "Failed to record payout");
     }
   };
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-in slide-in-from-bottom duration-300">
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
+        <div className="bg-linear-to-r from-blue-600 to-indigo-600 p-6 text-white">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-3xl font-bold">Payout Management</h2>
@@ -1043,6 +1359,27 @@ function PayoutModal({
             >
               <X className="w-6 h-6" />
             </button>
+          </div>
+
+          {/* Available Balance Display */}
+          <div className="mt-4 p-3 bg-white/20 backdrop-blur-sm rounded-xl border-2 border-white/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Wallet className="w-5 h-5 text-white" />
+                <span className="text-white/90 text-sm font-medium">
+                  Available Balance
+                </span>
+              </div>
+              <div className="text-2xl font-bold text-white">
+                ₹{netBalance.toLocaleString("en-IN")}
+              </div>
+            </div>
+            {netBalance <= 0 && (
+              <div className="mt-2 text-xs text-yellow-200 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                Insufficient balance for payouts
+              </div>
+            )}
           </div>
 
           <div className="mt-6 flex gap-2 bg-white/10 p-1 rounded-xl backdrop-blur-sm">
@@ -1134,7 +1471,7 @@ function PayNowForm({
   hasQRData,
 }: {
   shopkeeperInfo: { name: string; phone: string; upi: string };
-  validationSchema: any;
+  validationSchema: Yup.ObjectSchema<{ amount: number; purpose: string }>;
   onSubmit: (values: { amount: string; purpose: string }) => Promise<void>;
   onCancel: () => void;
   isLoading: boolean;
@@ -1160,7 +1497,7 @@ function PayNowForm({
           )}
 
           {hasQRData && shopkeeperInfo.name && (
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-5 rounded-xl border-2 border-green-200">
+            <div className="bg-linear-to-r from-green-50 to-emerald-50 p-5 rounded-xl border-2 border-green-200">
               <label className="block text-sm font-bold text-gray-700 mb-2">
                 Paying To
               </label>
@@ -1224,7 +1561,7 @@ function PayNowForm({
             <button
               type="submit"
               disabled={isLoading || !hasQRData}
-              className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-xl hover:shadow-xl transition-all duration-200 font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105"
+              className="flex-1 bg-linear-to-r from-blue-600 to-blue-700 text-white py-4 rounded-xl hover:shadow-xl transition-all duration-200 font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105"
             >
               {isLoading ? "Processing..." : "💳 Pay via Razorpay"}
             </button>
@@ -1249,7 +1586,14 @@ function ManualEntryForm({
   onCancel,
   isLoading,
 }: {
-  validationSchema: any;
+  validationSchema: Yup.ObjectSchema<{
+    recipientName: string;
+    recipientPhone: string;
+    amount: number;
+    purpose: string;
+    category: string;
+    paymentMethod: string;
+  }>;
   onSubmit: (values: Record<string, string>) => Promise<void>;
   onCancel: () => void;
   isLoading: boolean;
@@ -1424,7 +1768,7 @@ function ManualEntryForm({
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-4 rounded-xl hover:shadow-xl transition-all duration-200 font-bold text-lg disabled:opacity-50 hover:scale-105"
+              className="flex-1 bg-linear-to-r from-green-600 to-green-700 text-white py-4 rounded-xl hover:shadow-xl transition-all duration-200 font-bold text-lg disabled:opacity-50 hover:scale-105"
             >
               {isLoading ? "Saving..." : "✅ Record Payment"}
             </button>

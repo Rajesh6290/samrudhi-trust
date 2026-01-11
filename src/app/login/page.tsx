@@ -29,7 +29,8 @@ const LoginPage: React.FC = () => {
     try {
       const result = await login(email, password);
 
-      if (result.success) {
+      if (result.success && result.user) {
+        // Redirect all authenticated users to admin dashboard
         router.push("/admin/dashboard");
       } else {
         setError(result.error || "Login failed");
@@ -108,7 +109,7 @@ const LoginPage: React.FC = () => {
               transition={{ delay: 0.3 }}
               className="text-3xl font-black text-white uppercase tracking-tighter"
             >
-              samriddhi <span className="text-slate-900">ADMIN</span>
+              samriddhi <span className="text-slate-900">PORTAL</span>
             </motion.h1>
             <motion.p
               initial={{ opacity: 0 }}
@@ -116,7 +117,7 @@ const LoginPage: React.FC = () => {
               transition={{ delay: 0.4 }}
               className="text-white/90 font-medium mt-2"
             >
-              Sign in to access admin panel
+              Sign in to access your account
             </motion.p>
           </div>
 

@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import connectDB from "@/lib/mongodb";
-import Payment from "@/models/Payment";
+import Payment, { IPayment } from "@/models/Payment";
+import Transaction, { ITransaction } from "@/models/Transaction";
 import SiteSettings from "@/models/SiteSettings";
 import Member from "@/models/Member";
 import { invoice80GTemplate } from "@/features/templates/80G";
 import { invoice } from "@/features/templates/invoice";
+
+// Type for payment record that could be either Payment or Transaction
+type PaymentRecord = (IPayment | ITransaction) & {
+  _id: mongoose.Types.ObjectId;
+  member?:
+    | mongoose.Types.ObjectId
+    | { name: string; email?: string; phone?: string; address?: string };
+};
 
 // Helper function to convert number to words (Indian style)
 function numberToWords(num: number): string {
@@ -99,7 +109,41 @@ export async function GET(
 
     const { id } = await params;
 
-    const payment = await Payment.findById(id).populate("member");
+    // Try to find by invoice number first, then by _id (for backward compatibility)
+    let payment: PaymentRecord | null = null;
+
+    // Check if it's an invoice number (starts with INV- or REC-)
+    const isInvoiceNumber = id.startsWith("INV-") || id.startsWith("REC-");
+
+    if (isInvoiceNumber) {
+      // Search by invoice number in Transaction collection first
+      payment = (await Transaction.findOne({ invoiceNumber: id }).populate(
+        "member"
+      )) as PaymentRecord | null;
+
+      if (!payment) {
+        // Search by invoice number in Payment collection
+        payment = (await Payment.findOne({ invoiceNumber: id }).populate(
+          "member"
+        )) as PaymentRecord | null;
+      }
+    } else {
+      // If it looks like an ObjectId, search by _id
+      try {
+        payment = (await Transaction.findById(id).populate(
+          "member"
+        )) as PaymentRecord | null;
+
+        if (!payment) {
+          payment = (await Payment.findById(id).populate(
+            "member"
+          )) as PaymentRecord | null;
+        }
+      } catch (_error) {
+        // If findById fails, it's not a valid ObjectId
+        console.error("Invalid ObjectId:", id);
+      }
+    }
 
     if (!payment) {
       return NextResponse.json({ error: "Payment not found" }, { status: 404 });
@@ -113,16 +157,9 @@ export async function GET(
     }
 
     // Fetch site settings for organization details
-    let settings = await SiteSettings.findOne();
+    const settings = await SiteSettings.findOne();
     if (!settings) {
-      // Create default settings if not exists
-      settings = await SiteSettings.create({
-        organizationName: "Samrudhi Trust",
-        email: "info@samrudhitrust.org",
-        phone: "+91-XXXXXXXXXX",
-        address:
-          "Building no.1, First Floor, Mathan One, Sunlight Colony - 2, Ashram, New Delhi - 110014",
-      });
+      throw new Error("Site settings not found");
     }
 
     // Fetch chairman for signature
@@ -136,7 +173,12 @@ export async function GET(
       payment.member &&
       typeof payment.member === "object" &&
       "name" in payment.member
-        ? (payment.member as any)
+        ? (payment.member as {
+            name: string;
+            email?: string;
+            phone?: string;
+            address?: string;
+          })
         : null;
 
     const donorName =
@@ -180,6 +222,23 @@ export async function GET(
     // Convert amount to words
     const amountInWords = `Rupees ${numberToWords(Math.floor(payment.amount))} Only`;
 
+    // Get the payment date - handle both Transaction (transactionDate) and Payment (paymentDate) models
+    const paymentDate =
+      ("transactionDate" in payment && payment.transactionDate) ||
+      ("paymentDate" in payment && payment.paymentDate);
+
+    if (!paymentDate) {
+      throw new Error("Payment date not found");
+    }
+
+    // Get transaction ID - for incoming: razorpayPaymentId, for outgoing: transactionId or razorpayPaymentId
+    const transactionIdValue =
+      "transactionType" in payment && payment.transactionType === "outgoing"
+        ? ("transactionId" in payment && payment.transactionId) ||
+          payment.razorpayPaymentId ||
+          ""
+        : payment.razorpayPaymentId || "";
+
     // Prepare data for templates
     const invoiceData = {
       // Organization details
@@ -187,6 +246,8 @@ export async function GET(
       organizationEmail: settings.email,
       organizationPhone: settings.phone,
       organizationAddress: settings.address,
+      organizationPan: settings.pan || "AABTI1433N",
+      organizationGstin: settings.gstin,
 
       // Chairman details
       chairmanName: chairman?.name || "Authorized Signatory",
@@ -196,7 +257,7 @@ export async function GET(
       receiptNo: payment.invoiceNumber || payment._id.toString(),
       invoiceNumber: payment.invoiceNumber || payment._id.toString(),
       certificateNumber: payment.certificateNumber80G,
-      date: formatDate(payment.paymentDate),
+      date: formatDate(paymentDate),
       donorName,
       donorEmail: donorEmail || "",
       donorPhone: donorPhone || "",
@@ -207,7 +268,7 @@ export async function GET(
       panCard: payment.panCard || "",
       amount: payment.amount,
       amountInWords,
-      transactionId: payment.razorpayPaymentId || "",
+      transactionId: transactionIdValue,
       paymentMode: payment.paymentMethod
         ? payment.paymentMethod.charAt(0).toUpperCase() +
           payment.paymentMethod.slice(1)
@@ -221,24 +282,24 @@ export async function GET(
       ? invoice80GTemplate(invoiceData)
       : invoice(invoiceData);
 
-    return NextResponse.json({
-      success: true,
-      invoiceHTML,
-      payment: {
-        _id: payment._id,
-        invoiceNumber: payment.invoiceNumber,
-        amount: payment.amount,
-        needs80G: payment.needs80G,
-        certificateNumber80G: payment.certificateNumber80G,
-        razorpayPaymentId: payment.razorpayPaymentId,
+    // Return HTML directly for display in browser
+    return new NextResponse(invoiceHTML, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
       },
     });
   } catch (error) {
     const err = error as Error;
     console.error("Error fetching invoice:", err);
-    return NextResponse.json(
-      { error: err.message || "Failed to fetch invoice" },
-      { status: 500 }
+    return new NextResponse(
+      `<html><body><h1>Error</h1><p>${err.message || "Failed to fetch invoice"}</p></body></html>`,
+      {
+        status: 500,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+        },
+      }
     );
   }
 }

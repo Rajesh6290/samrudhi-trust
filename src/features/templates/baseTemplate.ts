@@ -3,6 +3,8 @@
  * Used as a foundation for all email templates
  */
 
+import { getBaseUrl } from "@/lib/getBaseUrl";
+
 interface BaseTemplateProps {
   title: string;
   content: string;
@@ -147,8 +149,8 @@ export function getBaseEmailTemplate({
               </p>
               
               <p style="margin: 10px 0; font-size: 12px;">
-                <a href="${process.env.NEXT_PUBLIC_BASE_URL}" style="color: #667eea; text-decoration: none;">Visit Website</a> |
-                <a href="${process.env.NEXT_PUBLIC_BASE_URL}/contact" style="color: #667eea; text-decoration: none;">Contact Us</a>
+                <a href="${getBaseUrl()}" style="color: #667eea; text-decoration: none;">Visit Website</a> |
+                <a href="${getBaseUrl()}/contact" style="color: #667eea; text-decoration: none;">Contact Us</a>
               </p>
             </td>
           </tr>

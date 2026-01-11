@@ -21,7 +21,7 @@ const DefaultLayouts = ({
   showPaymentInfo?: boolean;
 }) => {
   return (
-    <div className="w-full min-h-dvh bg-white flex relative flex-col">
+    <div className="w-full min-h-dvh bg-white text-gray-900 flex relative flex-col">
       <ScrollProgress />
       <Suspense fallback={<div className="h-20 bg-white" />}>
         <Navbar />

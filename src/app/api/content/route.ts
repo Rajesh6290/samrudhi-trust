@@ -3,6 +3,8 @@ import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import dbConnect from "@/lib/mongodb";
 import Content from "@/models/Content";
+import { logAuditAction, getRequestMetadata } from "@/lib/auditLogger";
+import { checkAuth } from "@/lib/auth-middleware";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
@@ -53,11 +55,33 @@ export async function POST(request: NextRequest) {
     await dbConnect();
     const body = await request.json();
 
+    // Check if content exists to determine action
+    const existingContent = await Content.findOne({ key: body.key });
+    const isUpdate = !!existingContent;
+
     // Upsert: update if exists, create if doesn't
     const content = await Content.findOneAndUpdate({ key: body.key }, body, {
       new: true,
       upsert: true,
     });
+
+    // Log audit action
+    const { user: authUser } = await checkAuth(request);
+    if (authUser) {
+      const metadata = getRequestMetadata(request);
+      await logAuditAction({
+        userId: authUser._id,
+        userName: authUser.name,
+        userEmail: authUser.email,
+        action: isUpdate ? "update" : "create",
+        module: "content",
+        entityType: "Content",
+        entityId: content._id.toString(),
+        entityName: body.key,
+        ...metadata,
+        status: "success",
+      });
+    }
 
     return NextResponse.json({ content }, { status: 201 });
   } catch (error: unknown) {

@@ -30,6 +30,8 @@ interface Settings {
   accountNumber?: string;
   ifscCode?: string;
   accountHolderName?: string;
+  pan: string;
+  gstin?: string;
   upiId?: string;
   upiQrCode?: string;
   organizationName: string;
@@ -46,6 +48,7 @@ const SettingsPage: React.FC = () => {
     email: "",
     phone: "",
     address: "",
+    pan: "",
     officeMapLink: "",
     officeMapEmbedUrl: "",
   });
@@ -459,6 +462,62 @@ const SettingsPage: React.FC = () => {
               placeholder="SBIN0001234"
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all font-medium"
             />
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Tax Details */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35 }}
+        className="bg-white rounded-2xl shadow-lg p-8 border border-slate-100"
+      >
+        <h3 className="text-xl font-black text-slate-900 uppercase tracking-wider mb-6">
+          Tax Details
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-slate-900 font-bold text-sm uppercase tracking-wider mb-2">
+              PAN Number <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={settings.pan || ""}
+              onChange={(e) =>
+                setSettings({ ...settings, pan: e.target.value.toUpperCase() })
+              }
+              placeholder="AABTI1433N"
+              maxLength={10}
+              required
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all font-medium uppercase"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Required for invoices and 80G certificates
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-slate-900 font-bold text-sm uppercase tracking-wider mb-2">
+              GSTIN (Optional)
+            </label>
+            <input
+              type="text"
+              value={settings.gstin || ""}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  gstin: e.target.value.toUpperCase(),
+                })
+              }
+              placeholder="22AAAAA0000A1Z5"
+              maxLength={15}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all font-medium uppercase"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Optional GST identification number
+            </p>
           </div>
         </div>
       </motion.div>

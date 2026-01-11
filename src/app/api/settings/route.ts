@@ -11,26 +11,25 @@ export async function GET() {
     await connectDB();
 
     // Get the first (and should be only) settings document
-    let settings = await SiteSettings.findOne().lean();
+    const settings = await SiteSettings.findOne().lean();
 
-    // If no settings exist, create default
+    // If no settings exist, return default structure
     if (!settings) {
-      settings = await SiteSettings.create({
-        organizationName: "Samriddhi Seva Trust",
-        email: "contact@samrudhisevatrust.org",
-        phone: "+91 123 456 7890",
-        address: "Mumbai, Maharashtra, India",
-        officeMapLink: "",
-        officeMapEmbedUrl: "",
-      });
-    } else {
-      // Ensure new fields exist in old documents
-      if (settings.officeMapLink === undefined) {
-        settings.officeMapLink = "";
-      }
-      if (settings.officeMapEmbedUrl === undefined) {
-        settings.officeMapEmbedUrl = "";
-      }
+      return NextResponse.json(
+        {
+          success: true,
+          settings: {
+            organizationName: "Samriddhi Seva Trust",
+            email: "",
+            phone: "",
+            address: "",
+            pan: "",
+            officeMapLink: "",
+            officeMapEmbedUrl: "",
+          },
+        },
+        { status: 200 }
+      );
     }
 
     return NextResponse.json(

@@ -230,7 +230,7 @@ function generateHTMLContent(
 
   // Split data into pages (25 rows per page to prevent cutting)
   const itemsPerPage =
-    exportType === "all" ? 27 : exportType === "minimal" ? 29 : 23;
+    exportType === "all" ? 27 : exportType === "minimal" ? 29 : 25;
   const totalPages = Math.ceil(membersData.length / itemsPerPage);
   let allPagesHTML = "";
 
@@ -259,8 +259,8 @@ function generateHTMLContent(
             <td style="text-align: center; padding: 6px 1px; font-weight: 500; color: #7f8c8d; font-size: 12px;">${serialNo}</td>
             <td style="padding: 8px 6px; color: #2c3e50; font-size: 12px;">${member.name}</td>
             <td style="padding: 8px 6px; color: #2c3e50; font-size: 12px;">${member.email}</td>
-            <td style="padding: 8px 6px; color: #2c3e50; font-size: 12px;">${member.phone}</td>
-            <td style="text-align: center; padding: 8px 6px; color: #2c3e50; font-size: 12px; font-weight: 600;">${member.paymentAmount ? "₹" + member.paymentAmount : "-"}</td>
+            <td style="padding: 8px 6px; color: #2c3e50; font-size: 12px;">${member.phone || "Not Provided"}</td>
+            <td style="text-align: center; padding: 8px 6px; color: #2c3e50; font-size: 12px; font-weight: 600;">${member.paymentAmount ? "₹" + member.paymentAmount : "--"}</td>
             <td style="text-align: center; padding: 8px 6px;">
               <span style="display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; ${
                 member.paymentStatus === "Paid"

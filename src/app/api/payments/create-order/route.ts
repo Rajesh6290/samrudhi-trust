@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import connectDB from "@/lib/mongodb";
 import Payment from "@/models/Payment";
+import Transaction from "@/models/Transaction";
 import Member from "@/models/Member";
 
 export async function POST(req: NextRequest) {
@@ -55,17 +56,42 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Check if payment already exists for this month
+      // Check if payment already exists for this month (check both collections)
       const existingPayment = await Payment.findOne({
         member: memberId,
         month: new Date(month),
         status: { $in: ["completed", "pending"] },
       });
-      if (existingPayment) {
-        return NextResponse.json(
-          { error: "Payment for this month already exists" },
-          { status: 400 }
-        );
+
+      const existingTransaction = await Transaction.findOne({
+        transactionType: "incoming",
+        paymentType: "member",
+        member: memberId,
+        month: new Date(month),
+        status: { $in: ["completed", "pending"] },
+      });
+
+      if (existingPayment || existingTransaction) {
+        const existingRecord = existingPayment || existingTransaction;
+
+        if (existingRecord && existingRecord.status === "completed") {
+          return NextResponse.json(
+            { error: "Payment for this month already completed" },
+            { status: 400 }
+          );
+        }
+
+        if (existingRecord && existingRecord.status === "pending") {
+          return NextResponse.json(
+            {
+              error:
+                "Payment for this month is already pending. Please check your email and complete the pending payment, or retry from My Donations page.",
+              pendingPaymentId: existingRecord._id,
+              isPending: true,
+            },
+            { status: 400 }
+          );
+        }
       }
     }
 
@@ -77,18 +103,62 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
+
       const existingMember = await Member.findOne({ email: donorEmail });
       if (existingMember) {
-        const existingPaymentCheck = await Payment.findOne({
+        // Get current month in YYYY-MM format
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        const currentMonthStart = new Date(currentMonth + "-01");
+        const nextMonthStart = new Date(
+          new Date(currentMonthStart).setMonth(currentMonthStart.getMonth() + 1)
+        );
+
+        // Check for completed donation in current month
+        const currentMonthPayment = await Payment.findOne({
           donorEmail,
-          month: new Date(month),
-          status: { $in: ["completed", "pending"] },
+          status: "completed",
+          transactionDate: { $gte: currentMonthStart, $lt: nextMonthStart },
         });
-        if (existingPaymentCheck) {
+
+        const currentMonthTransaction = await Transaction.findOne({
+          donorEmail,
+          transactionType: "incoming",
+          status: "completed",
+          transactionDate: { $gte: currentMonthStart, $lt: nextMonthStart },
+        });
+
+        if (currentMonthPayment || currentMonthTransaction) {
           return NextResponse.json(
             {
               error:
-                "This email belongs to an existing member who has already paid for this month",
+                "You have already made a donation for this month. Thank you for your contribution!",
+            },
+            { status: 400 }
+          );
+        }
+
+        // Check for pending payment in last 24 hours
+        const existingPaymentCheck = await Payment.findOne({
+          donorEmail,
+          status: "pending",
+          createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        });
+
+        const existingTransactionCheck = await Transaction.findOne({
+          donorEmail,
+          transactionType: "incoming",
+          status: "pending",
+          createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        });
+
+        if (existingPaymentCheck || existingTransactionCheck) {
+          const existing = existingPaymentCheck || existingTransactionCheck;
+          return NextResponse.json(
+            {
+              error:
+                "You have a pending payment. Please check your email and complete the pending payment, or retry from My Donations page.",
+              pendingPaymentId: existing!._id,
+              isPending: true,
             },
             { status: 400 }
           );
@@ -165,7 +235,34 @@ export async function POST(req: NextRequest) {
     if (needs80G && panCard) {
       paymentData.panCard = panCard.toUpperCase();
     }
+
+    // Create payment record in Payment collection (for backward compatibility)
     const payment = await Payment.create(paymentData);
+
+    // Also create in Transaction collection (new unified system)
+    const transactionData = {
+      transactionType: "incoming" as const,
+      paymentType,
+      amount,
+      transactionDate: new Date(),
+      status: "pending" as const,
+      razorpayOrderId: order.id,
+      donorName,
+      donorEmail,
+      donorPhone,
+      donorAddress,
+      needs80G: Boolean(needs80G),
+      panCard: needs80G && panCard ? panCard.toUpperCase() : undefined,
+      member: paymentType === "member" ? memberId : undefined,
+      month: paymentType === "member" ? new Date(month) : undefined,
+      invoiceSent: false,
+      retryCount: 0,
+      maxRetries: 3,
+      webhookReceived: false,
+      reconciliationStatus: "not_required" as const,
+    };
+
+    await Transaction.create(transactionData);
 
     return NextResponse.json({
       success: true,

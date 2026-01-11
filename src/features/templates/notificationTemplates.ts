@@ -1,3 +1,4 @@
+import { getBaseUrl } from "@/lib/getBaseUrl";
 import { getBaseEmailTemplate } from "./baseTemplate";
 
 /**
@@ -41,7 +42,7 @@ export function getCampaignLaunchTemplate(
     </div>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${process.env.NEXT_PUBLIC_BASE_URL}/campaign" class="button">
+      <a href="${getBaseUrl()}/campaign" class="button">
         Support This Campaign
       </a>
     </div>
@@ -81,7 +82,7 @@ export function getVolunteerOpportunityTemplate(
     </div>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${process.env.NEXT_PUBLIC_BASE_URL}/volunteer" class="button">
+      <a href="${getBaseUrl()}/volunteer" class="button">
         Register Now
       </a>
     </div>
@@ -140,7 +141,7 @@ export function getCertificateGeneratedTemplate(
     </div>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${process.env.NEXT_PUBLIC_BASE_URL}/certificates/${certificateNumber}" class="button">
+      <a href="${getBaseUrl()}/certificates/${certificateNumber}" class="button">
         Download Certificate
       </a>
     </div>

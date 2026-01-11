@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Payment from "@/models/Payment";
+import Transaction from "@/models/Transaction";
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,6 +15,7 @@ export async function GET(req: NextRequest) {
     const needs80G = searchParams.get("needs80G");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
+    const useNewSystem = searchParams.get("useNew") === "true";
 
     const query: any = {};
 
@@ -50,15 +52,59 @@ export async function GET(req: NextRequest) {
 
     const skip = (page - 1) * limit;
 
-    const [payments, total] = await Promise.all([
-      Payment.find(query)
-        .populate("member", "name email phone")
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Payment.countDocuments(query),
-    ]);
+    // Use Transaction collection if requested, otherwise use Payment (backward compatibility)
+    let payments, total;
+
+    if (useNewSystem) {
+      // Use new Transaction collection
+      const transactionQuery = {
+        ...query,
+        transactionType: "incoming",
+      };
+
+      [payments, total] = await Promise.all([
+        Transaction.find(transactionQuery)
+          .populate("member", "name email phone")
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+        Transaction.countDocuments(transactionQuery),
+      ]);
+
+      // Map transaction fields to payment format for backward compatibility
+      payments = payments.map((t: any) => ({
+        _id: t._id,
+        paymentType: t.paymentType,
+        member: t.member,
+        donorName: t.donorName,
+        donorEmail: t.donorEmail,
+        donorPhone: t.donorPhone,
+        amount: t.amount,
+        month: t.month,
+        paymentDate: t.transactionDate,
+        status: t.status,
+        invoiceNumber: t.invoiceNumber,
+        paymentMethod: t.paymentMethod,
+        razorpayPaymentId: t.razorpayPaymentId,
+        needs80G: t.needs80G,
+        certificateNumber80G: t.certificateNumber80G,
+        panCard: t.panCard,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
+      }));
+    } else {
+      // Use old Payment collection (default for backward compatibility)
+      [payments, total] = await Promise.all([
+        Payment.find(query)
+          .populate("member", "name email phone")
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+        Payment.countDocuments(query),
+      ]);
+    }
 
     return NextResponse.json({
       success: true,

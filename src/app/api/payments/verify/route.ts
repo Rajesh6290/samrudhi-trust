@@ -3,6 +3,12 @@ import crypto from "crypto";
 import Razorpay from "razorpay";
 import connectDB from "@/lib/mongodb";
 import Payment from "@/models/Payment";
+import Transaction from "@/models/Transaction";
+import { sendPaymentSuccessEmail } from "@/lib/paymentEmailService";
+import {
+  generateInvoicePDF,
+  generate80GCertificatePDF,
+} from "@/lib/emailService";
 
 export async function POST(req: NextRequest) {
   try {
@@ -82,9 +88,121 @@ export async function POST(req: NextRequest) {
 
     await payment.populate("member");
 
+    // Also update in Transaction collection if exists
+    const transaction = await Transaction.findOne({
+      razorpayOrderId: razorpay_order_id,
+      transactionType: "incoming",
+    });
+
+    if (transaction) {
+      // Update transaction record
+      transaction.status = "completed";
+      transaction.razorpayPaymentId = razorpay_payment_id;
+      transaction.razorpaySignature = razorpay_signature;
+      transaction.transactionDate = new Date();
+      transaction.paymentMethod = payment.paymentMethod as
+        | "card"
+        | "netbanking"
+        | "wallet"
+        | "upi"
+        | "cash"
+        | "bank_transfer"
+        | "cheque"
+        | "other"
+        | undefined;
+      transaction.invoiceNumber = payment.invoiceNumber;
+      transaction.certificateNumber80G = payment.certificateNumber80G;
+      transaction.certificateIssueDate = payment.certificateIssueDate;
+      transaction.invoiceType = payment.invoiceType;
+      await transaction.save();
+    }
+
     if (!payment) {
       return NextResponse.json({ error: "Payment not found" }, { status: 404 });
     }
+
+    // Send payment success email with invoice PDF in background
+    (async () => {
+      try {
+        const recipientEmail = (payment.donorEmail ||
+          (payment.member &&
+          typeof payment.member === "object" &&
+          "email" in payment.member
+            ? payment.member.email
+            : "")) as string;
+        const recipientName = (payment.donorName ||
+          (payment.member &&
+          typeof payment.member === "object" &&
+          "name" in payment.member
+            ? payment.member.name
+            : "Valued Supporter")) as string;
+
+        console.warn("Payment success - attempting to send email", {
+          hasEmail: !!recipientEmail,
+          hasInvoice: !!payment.invoiceNumber,
+          hasDate: !!payment.paymentDate,
+          recipientEmail,
+        });
+
+        if (recipientEmail && payment.invoiceNumber && payment.paymentDate) {
+          // Prepare payment details for PDF generation
+          const paymentDetails = {
+            orderId: payment.razorpayOrderId || "",
+            paymentId: payment.razorpayPaymentId || payment._id.toString(),
+            amount: payment.amount,
+            currency: "INR",
+            donorName: recipientName,
+            donorEmail: recipientEmail,
+            donorPhone: payment.donorPhone || "",
+            donorAddress: payment.donorAddress || "",
+            panCard: payment.panCard || "",
+            purpose:
+              payment.paymentType === "member"
+                ? "Membership Payment"
+                : "Donation",
+            paymentMethod: payment.paymentMethod || "online",
+            transactionDate: payment.paymentDate.toLocaleDateString("en-IN"),
+            receiptNumber: payment.invoiceNumber,
+            tax80G: payment.needs80G || false,
+          };
+
+          console.warn("Generating PDF...", { needs80G: payment.needs80G });
+          // Generate the correct PDF based on 80G requirement
+          const invoicePDF = payment.needs80G
+            ? await generate80GCertificatePDF(paymentDetails)
+            : await generateInvoicePDF(paymentDetails);
+          console.warn("PDF generated, size:", invoicePDF.length, "bytes", {
+            type: payment.needs80G ? "80G Certificate" : "Invoice",
+          });
+
+          // Send email with PDF attachment
+          console.warn("Sending payment success email...");
+          await sendPaymentSuccessEmail(
+            recipientEmail,
+            recipientName,
+            payment.amount,
+            payment.invoiceNumber,
+            payment.paymentDate,
+            payment.needs80G || false,
+            invoicePDF
+          );
+
+          console.warn("Payment success email sent to:", recipientEmail);
+        } else {
+          console.error(
+            "Cannot send payment success email - missing required fields:",
+            {
+              hasEmail: !!recipientEmail,
+              hasInvoice: !!payment.invoiceNumber,
+              hasDate: !!payment.paymentDate,
+            }
+          );
+        }
+      } catch (emailError) {
+        console.error("Failed to send payment success email:", emailError);
+        // Don't fail the payment verification if email fails
+      }
+    })();
 
     return NextResponse.json({
       success: true,

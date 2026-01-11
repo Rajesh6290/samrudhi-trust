@@ -5,6 +5,8 @@ import { AuthProvider } from "@/features/hooks/AuthProvider";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ToastContainer } from "react-toastify";
 import "dotenv/config";
+import "@/lib/startupHealthCheck";
+import "@/lib/cronJobs";
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],

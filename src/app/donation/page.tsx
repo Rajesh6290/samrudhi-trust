@@ -1,9 +1,10 @@
 "use client";
 
+import useMutation from "@/features/hooks/useMutation";
+import DefaultLayouts from "@/features/layouts/DefaultLayouts";
 import { ErrorMessage, Field, Form, Formik } from "formik";
 import { motion } from "framer-motion";
 import {
-  CheckCircle,
   CreditCard,
   Heart,
   IndianRupee,
@@ -18,9 +19,8 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
+import Swal from "sweetalert2";
 import * as Yup from "yup";
-import useMutation from "@/features/hooks/useMutation";
-import DefaultLayouts from "@/features/layouts/DefaultLayouts";
 
 interface RazorpayResponse {
   razorpay_order_id: string;
@@ -30,7 +30,7 @@ interface RazorpayResponse {
 
 const DonationPage = () => {
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [show80GInfo, setShow80GInfo] = useState(false);
   const { mutation } = useMutation();
 
@@ -145,6 +145,9 @@ const DonationPage = () => {
           color: "#3b82f6",
         },
         handler: async (response: RazorpayResponse) => {
+          // Set processing state immediately
+          setIsProcessing(true);
+
           const verifyResponse = await mutation("payments/verify", {
             method: "POST",
             body: {
@@ -157,40 +160,73 @@ const DonationPage = () => {
 
           if (verifyResponse?.results?.success) {
             const payment = verifyResponse.results.payment;
-            setSubmitted(true);
-            toast.success("Donation successful! Thank you for your support!");
 
-            // Automatically download/open invoice
-            try {
-              const invoiceResponse = await fetch(
-                `/api/payments/invoice/${payment._id}`
-              );
-              const invoiceData = await invoiceResponse.json();
-
-              if (invoiceData.success) {
-                const invoiceWindow = window.open("", "_blank");
-                if (invoiceWindow) {
-                  invoiceWindow.document.write(invoiceData.invoiceHTML);
-                  invoiceWindow.document.close();
-                }
-              }
-            } catch {
-              toast.info("Invoice will be sent via email");
+            // Open invoice in new tab
+            if (payment.invoiceNumber) {
+              window.open(`/api/payments/invoice/${payment._id}`, "_blank");
             }
 
+            // Show success popup
+            await Swal.fire({
+              icon: "success",
+              title: "Donation Successful!",
+              html: `
+                <p class="text-lg mb-2">Thank you for your generous donation!</p>
+                <p class="text-gray-600">Amount: ₹${payment.amount.toLocaleString("en-IN")}</p>
+                <p class="text-gray-600 mt-2">${payment.needs80G ? "80G certificate" : "Invoice"} has been sent to <strong>${payment.donorEmail}</strong></p>
+              `,
+              confirmButtonText: "Done",
+              confirmButtonColor: "#3b82f6",
+            });
+
+            // Reset form
             resetForm();
-            setTimeout(() => {
-              setSubmitted(false);
-              window.location.href = "/";
-            }, 3000);
+            setIsProcessing(false);
           } else {
+            setIsProcessing(false);
             throw new Error("Payment verification failed");
           }
         },
         modal: {
-          ondismiss: () => {
-            toast.info("Payment cancelled");
-            setSubmitting(false);
+          ondismiss: async () => {
+            // Show processing state
+            setIsProcessing(true);
+
+            // Send retry email for the pending payment
+            try {
+              await mutation(`payments/${paymentId}/mark-cancelled`, {
+                method: "PATCH",
+                body: { reason: "User cancelled payment" },
+              });
+
+              // Show cancellation confirmation
+              await Swal.fire({
+                icon: "info",
+                title: "Payment Cancelled",
+                html: `
+                  <p class="text-lg mb-2">Your payment has been cancelled.</p>
+                  <p class="text-gray-600">We've sent you an email with a link to retry this payment anytime within the next 7 days.</p>
+                `,
+                confirmButtonText: "OK",
+                confirmButtonColor: "#3b82f6",
+              });
+            } catch (error) {
+              console.error("Failed to mark payment as cancelled:", error);
+              // Show simpler cancellation message if API fails
+              await Swal.fire({
+                icon: "info",
+                title: "Payment Cancelled",
+                html: `
+                  <p class="text-lg mb-2">Your payment has been cancelled.</p>
+                  <p class="text-gray-600">You can make a new donation anytime.</p>
+                `,
+                confirmButtonText: "OK",
+                confirmButtonColor: "#3b82f6",
+              });
+            } finally {
+              setIsProcessing(false);
+              setSubmitting(false);
+            }
           },
         },
       });
@@ -310,25 +346,30 @@ const DonationPage = () => {
               transition={{ ...FADE_UP.transition, delay: 0.2 }}
             >
               <div className="bg-white rounded-3xl p-8 shadow-2xl">
-                {submitted ? (
+                {isProcessing ? (
                   <div className="text-center py-16">
                     <motion.div
                       initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: "spring", duration: 0.6 }}
+                      animate={{ scale: 1, rotate: 360 }}
+                      transition={{
+                        scale: { type: "spring", duration: 0.6 },
+                        rotate: {
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: "linear",
+                        },
+                      }}
                     >
-                      <CheckCircle
-                        className="mx-auto text-green-400 mb-6"
+                      <Loader2
+                        className="mx-auto text-blue-500 mb-6"
                         size={80}
                       />
                     </motion.div>
-                    <h3 className="text-3xl font-black text-white mb-4">
-                      Thank You!
+                    <h3 className="text-3xl font-black text-gray-800 mb-4">
+                      Processing Payment...
                     </h3>
-                    <p className="text-cyan-200 text-lg">
-                      Your donation has been received successfully.
-                      <br />
-                      Redirecting to home page...
+                    <p className="text-gray-600 text-lg">
+                      Please wait while we verify your payment.
                     </p>
                   </div>
                 ) : (

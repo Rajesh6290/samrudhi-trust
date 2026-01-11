@@ -1,5 +1,9 @@
 import nodemailer from "nodemailer";
 import type Mail from "nodemailer/lib/mailer";
+import connectDB from "@/lib/mongodb";
+import SiteSettings from "@/models/SiteSettings";
+import Member from "@/models/Member";
+import { getBaseUrl } from "@/lib/getBaseUrl";
 
 /**
  * Enhanced Email Service
@@ -49,13 +53,16 @@ export interface PaymentDetails {
 // Create reusable transporter
 const createTransporter = () => {
   const transportConfig = {
-    host: process.env.SMTP_HOST || "smtp.gmail.com",
-    port: parseInt(process.env.SMTP_PORT || "587"),
-    secure: process.env.SMTP_SECURE === "true",
+    host: process.env.NEXT_PUBLIC_SMTP_HOST || "smtp.gmail.com",
+    port: parseInt(process.env.NEXT_PUBLIC_SMTP_PORT || "587"),
+    secure: process.env.NEXT_PUBLIC_SMTP_SECURE === "true",
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+      user: process.env.NEXT_PUBLIC_SMTP_USER,
+      pass: process.env.NEXT_PUBLIC_SMTP_PASS,
     },
+    connectionTimeout: 15000, // 15 seconds
+    greetingTimeout: 15000, // 15 seconds
+    socketTimeout: 30000, // 30 seconds
   };
 
   return nodemailer.createTransport(transportConfig);
@@ -79,7 +86,19 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
       attachments: options.attachments,
     };
 
+    console.warn("Sending email:", {
+      to: mailOptions.to,
+      subject: mailOptions.subject,
+      hasAttachments: !!options.attachments,
+      attachmentCount: options.attachments?.length || 0,
+      attachmentDetails: options.attachments?.map((a) => ({
+        filename: a.filename,
+        size: a.content instanceof Buffer ? a.content.length : "unknown",
+      })),
+    });
+
     await transporter.sendMail(mailOptions);
+    console.warn("Email sent successfully to:", mailOptions.to);
     return true;
   } catch (error) {
     console.error("Error sending email:", error);
@@ -146,15 +165,31 @@ export async function generateInvoicePDF(
     const chromium = await import("@sparticuz/chromium-min");
     const { invoice } = await import("@/features/templates/invoice");
 
+    // Fetch organization and chairman data from database
+    await connectDB();
+    const settings = await SiteSettings.findOne();
+    const chairman = await Member.findOne({
+      role: { $regex: /chairman/i },
+      isActive: true,
+    }).sort({ createdAt: 1 });
+
     // Prepare invoice data
+    const baseUrl =
+      getBaseUrl() ||
+      process.env.NEXT_PUBLIC_BASE_URL ||
+      "https://samriddhisevatrust.org";
+    const logoUrl = `${baseUrl}/logo.svg`;
+
     const invoiceData = {
-      organizationName: process.env.ORGANIZATION_NAME || "Samriddhi Seva Trust",
-      organizationEmail:
-        process.env.ORGANIZATION_EMAIL || "info@samriddhisevatrust.org",
-      organizationPhone: process.env.ORGANIZATION_PHONE || "+91 1234567890",
-      organizationAddress: process.env.ORGANIZATION_ADDRESS || "India",
-      chairmanName: process.env.CHAIRMAN_NAME || "Chairman Name",
-      chairmanPhoto: process.env.CHAIRMAN_PHOTO,
+      organizationName: settings?.organizationName || "Samriddhi Seva Trust",
+      organizationEmail: settings?.email || "info@samriddhisevatrust.org",
+      organizationPhone: settings?.phone || "+91 1234567890",
+      organizationAddress: settings?.address || "India",
+      organizationPan: settings?.pan || "AABTI1433N",
+      organizationGstin: settings?.gstin || undefined,
+      chairmanName: chairman?.name || "Authorized Signatory",
+      chairmanPhoto: chairman?.photo || "",
+      logoUrl,
       invoiceNumber: paymentDetails.receiptNumber || paymentDetails.orderId,
       date: paymentDetails.transactionDate || new Date().toLocaleDateString(),
       donorName: paymentDetails.donorName,
@@ -218,15 +253,31 @@ export async function generate80GCertificatePDF(
     const chromium = await import("@sparticuz/chromium-min");
     const { invoice80GTemplate } = await import("@/features/templates/80G");
 
+    // Fetch organization and chairman data from database
+    await connectDB();
+    const settings = await SiteSettings.findOne();
+    const chairman = await Member.findOne({
+      role: { $regex: /chairman/i },
+      isActive: true,
+    }).sort({ createdAt: 1 });
+
     // Prepare 80G certificate data
+    const baseUrl =
+      getBaseUrl() ||
+      process.env.NEXT_PUBLIC_BASE_URL ||
+      "https://samriddhisevatrust.org";
+    const logoUrl = `${baseUrl}/logo.svg`;
+
     const certificateData = {
-      organizationName: process.env.ORGANIZATION_NAME || "Samriddhi Seva Trust",
-      organizationEmail:
-        process.env.ORGANIZATION_EMAIL || "info@samriddhisevatrust.org",
-      organizationPhone: process.env.ORGANIZATION_PHONE || "+91 1234567890",
-      organizationAddress: process.env.ORGANIZATION_ADDRESS || "India",
-      chairmanName: process.env.CHAIRMAN_NAME || "Chairman Name",
-      chairmanPhoto: process.env.CHAIRMAN_PHOTO,
+      organizationName: settings?.organizationName || "Samriddhi Seva Trust",
+      organizationEmail: settings?.email || "info@samriddhisevatrust.org",
+      organizationPhone: settings?.phone || "+91 1234567890",
+      organizationAddress: settings?.address || "India",
+      organizationPan: settings?.pan || "AABTI1433N",
+      organizationGstin: settings?.gstin || undefined,
+      chairmanName: chairman?.name || "Authorized Signatory",
+      chairmanPhoto: chairman?.photo || "",
+      logoUrl,
       receiptNo: paymentDetails.receiptNumber || paymentDetails.orderId,
       certificateNumber: `80G-${paymentDetails.receiptNumber || paymentDetails.orderId}`,
       date: paymentDetails.transactionDate || new Date().toLocaleDateString(),

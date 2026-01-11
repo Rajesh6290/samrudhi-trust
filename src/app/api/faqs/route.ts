@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import FAQ from "@/models/FAQ";
+import { logAuditAction, getRequestMetadata } from "@/lib/auditLogger";
+import { checkAuth } from "@/lib/auth-middleware";
 
 // GET all FAQs (public)
 export async function GET(request: NextRequest) {
@@ -48,6 +50,24 @@ export async function POST(request: NextRequest) {
       category: category || "General",
       order: order || 0,
     });
+
+    // Log audit action
+    const { user } = await checkAuth(request);
+    if (user) {
+      const metadata = getRequestMetadata(request);
+      await logAuditAction({
+        userId: user._id,
+        userName: user.name,
+        userEmail: user.email,
+        action: "create",
+        module: "faqs",
+        entityType: "FAQ",
+        entityId: faq._id.toString(),
+        entityName: question.substring(0, 100),
+        ...metadata,
+        status: "success",
+      });
+    }
 
     return NextResponse.json({ faq }, { status: 201 });
   } catch (error) {

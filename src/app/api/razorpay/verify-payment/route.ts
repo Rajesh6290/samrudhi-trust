@@ -5,6 +5,7 @@ import connectDB from "@/lib/mongodb";
 import Payment from "@/models/Payment";
 import { verifyToken } from "@/lib/auth";
 import { sendPaymentSuccessEmail } from "@/lib/emailHelpers";
+import { sendImmediateRetryEmail } from "@/lib/sendImmediateRetryEmail";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -68,6 +69,13 @@ export async function POST(request: NextRequest) {
         payment.reconciliationStatus = "discrepancy";
         await payment.save();
 
+        // Send immediate retry email
+        try {
+          await sendImmediateRetryEmail(payment);
+        } catch (emailError) {
+          console.error("Failed to send immediate retry email:", emailError);
+        }
+
         return NextResponse.json(
           {
             success: false,
@@ -124,6 +132,7 @@ export async function POST(request: NextRequest) {
             success: true,
             message: "Payment verified and completed",
             payment,
+            invoiceNumber: payment.invoiceNumber,
           });
         } else if (razorpayPayment.status === "failed") {
           payment.status = "failed";
@@ -135,6 +144,13 @@ export async function POST(request: NextRequest) {
           payment.lastReconciliationDate = new Date();
 
           await payment.save();
+
+          // Send immediate retry email
+          try {
+            await sendImmediateRetryEmail(payment);
+          } catch (emailError) {
+            console.error("Failed to send immediate retry email:", emailError);
+          }
 
           return NextResponse.json({
             success: false,

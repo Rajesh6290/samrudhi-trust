@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Payment from "@/models/Payment";
 import { verifyToken } from "@/lib/auth";
+import { parse } from "cookie";
 import {
   reconcilePendingPayments,
   reconcileDiscrepantPayments,
@@ -21,13 +22,27 @@ export async function GET(request: NextRequest) {
     await connectDB();
 
     // Verify authentication and admin access
-    const token = request.cookies.get("token")?.value;
+    const cookies = parse(request.headers.get("cookie") || "");
+    const token = cookies.token;
+
     if (!token) {
+      console.error("Reconciliation GET: No token found in cookies", {
+        cookies,
+      });
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const payload = verifyToken(token);
-    if (!payload || payload.role !== "admin") {
+    if (!payload) {
+      console.error("Reconciliation GET: Token verification failed");
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    }
+
+    // Check if user is admin or superadmin
+    if (!(payload.role === "admin" || payload.role === "superadmin")) {
+      console.error("Reconciliation GET: User is not admin or superadmin", {
+        role: payload.role,
+      });
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -95,13 +110,19 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     // Verify authentication and admin access
-    const token = request.cookies.get("token")?.value;
+    const cookies = parse(request.headers.get("cookie") || "");
+    const token = cookies.token;
+
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const payload = verifyToken(token);
-    if (!payload || payload.role !== "admin") {
+    if (!payload) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!(payload.role === "admin" || payload.role === "superadmin")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -222,13 +243,19 @@ export async function PATCH(request: NextRequest) {
     await connectDB();
 
     // Verify authentication and admin access
-    const token = request.cookies.get("token")?.value;
+    const cookies = parse(request.headers.get("cookie") || "");
+    const token = cookies.token;
+
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const payload = verifyToken(token);
-    if (!payload || payload.role !== "admin") {
+    if (!payload) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!(payload.role === "admin" || payload.role === "superadmin")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

@@ -3,7 +3,7 @@
  * Handles permission checking for admin features
  */
 
-export type UserRole = "superadmin" | "admin" | "subadmin" | "user";
+export type UserRole = "superadmin" | "admin" | "subadmin" | "member" | "user";
 
 export const PERMISSIONS = {
   DASHBOARD: "dashboard",
@@ -28,6 +28,7 @@ export const PERMISSIONS = {
   NEWSLETTER: "newsletter",
   NOTIFICATIONS: "notifications",
   BLOG_COMMENTS: "blog_comments",
+  MY_DONATIONS: "my_donations",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -105,5 +106,19 @@ export function canManageAdmins(userRole: UserRole): boolean {
  * Check if user can access admin panel
  */
 export function canAccessAdminPanel(userRole: UserRole): boolean {
-  return ["superadmin", "admin", "subadmin"].includes(userRole);
+  return ["superadmin", "admin", "subadmin", "member"].includes(userRole);
+}
+
+/**
+ * Check if user is a member
+ */
+export function isMember(userRole: UserRole): boolean {
+  return userRole === "member";
+}
+
+/**
+ * Get permissions for member role
+ */
+export function getMemberPermissions(): string[] {
+  return ["profile", "dashboard", "my_donations"];
 }

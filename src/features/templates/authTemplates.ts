@@ -1,3 +1,4 @@
+import { getBaseUrl } from "@/lib/getBaseUrl";
 import { getBaseEmailTemplate } from "./baseTemplate";
 
 /**
@@ -27,7 +28,7 @@ export function getWelcomeEmailTemplate(name: string, email: string): string {
     </ul>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${process.env.NEXT_PUBLIC_BASE_URL}/login" class="button">
+      <a href="${getBaseUrl()}/login" class="button">
         Get Started
       </a>
     </div>
@@ -73,7 +74,7 @@ export function getAdminRegistrationNotificationTemplate(
     </div>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${process.env.NEXT_PUBLIC_BASE_URL}/admin/admins" class="button">
+      <a href="${getBaseUrl()}/admin/admins" class="button">
         View Admin Panel
       </a>
     </div>
@@ -124,7 +125,7 @@ export function getAdminCredentialsTemplate(
     </div>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${process.env.NEXT_PUBLIC_BASE_URL}/login" class="button">
+      <a href="${getBaseUrl()}/login" class="button">
         Login to Admin Panel
       </a>
     </div>

@@ -1,6 +1,8 @@
 import Razorpay from "razorpay";
 import connectDB from "@/lib/mongodb";
 import Payment, { IPayment } from "@/models/Payment";
+import Member from "@/models/Member";
+import { sendPaymentDiscrepancyEmail } from "@/lib/paymentEmailService";
 
 /**
  * Payment Reconciliation Service
@@ -98,6 +100,35 @@ async function reconcileSinglePayment(
         "Payment attempted but not completed. Money may be deducted but not captured. Requires manual intervention.";
 
       await payment.save();
+
+      // Send email to customer about payment under verification
+      try {
+        const recipientName = payment.donorName || "Valued Supporter";
+        const recipientEmail = payment.donorEmail;
+
+        if (recipientEmail) {
+          // Check if user is a member
+          let isMember = false;
+          if (payment.member) {
+            isMember = true;
+          } else if (recipientEmail) {
+            const memberCheck = await Member.findOne({ email: recipientEmail });
+            isMember = !!memberCheck;
+          }
+
+          await sendPaymentDiscrepancyEmail(
+            recipientEmail,
+            recipientName,
+            payment.amount,
+            payment.razorpayOrderId || "N/A",
+            isMember
+          );
+
+          console.log("Sent payment discrepancy email to:", recipientEmail);
+        }
+      } catch (emailError) {
+        console.error("Error sending discrepancy email:", emailError);
+      }
 
       return {
         status: "discrepancy",

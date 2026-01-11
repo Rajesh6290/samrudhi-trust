@@ -7,7 +7,6 @@ import { ErrorMessage, Field, Form, Formik } from "formik";
 import { motion } from "framer-motion";
 import {
   Calendar,
-  CheckCircle,
   CreditCard,
   IndianRupee,
   Loader2,
@@ -21,6 +20,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
+import Swal from "sweetalert2";
 import * as Yup from "yup";
 
 interface RazorpayResponse {
@@ -42,7 +42,7 @@ const MemberPaymentPage = () => {
     new Date().toISOString().slice(0, 7)
   );
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const { mutation } = useMutation();
   const { data: membersData, isLoading: membersLoading } =
@@ -142,10 +142,25 @@ const MemberPaymentPage = () => {
       });
 
       if (!orderResponse?.results?.success) {
-        toast.error(
-          orderResponse?.results?.error ||
-            "Failed to create order. Please try again."
-        );
+        // Check if there's a pending payment
+        if (
+          orderResponse?.results?.isPending &&
+          orderResponse?.results?.pendingPaymentId
+        ) {
+          toast.error(
+            `You already have a pending membership payment for ${paymentMonth}. Please complete or retry the existing payment.`,
+            { autoClose: 5000 }
+          );
+          // Optionally redirect to my-donations page to show pending payment
+          setTimeout(() => {
+            window.location.href = "/admin/my-donations?filter=pending";
+          }, 2000);
+        } else {
+          toast.error(
+            orderResponse?.results?.error ||
+              "Failed to create order. Please try again."
+          );
+        }
         setSubmitting(false);
         return;
       }
@@ -168,6 +183,9 @@ const MemberPaymentPage = () => {
           color: "#3b82f6",
         },
         handler: async (response: RazorpayResponse) => {
+          // Set processing state immediately
+          setIsProcessing(true);
+
           const verifyResponse = await mutation("payments/verify", {
             method: "POST",
             body: {
@@ -180,43 +198,64 @@ const MemberPaymentPage = () => {
 
           if (verifyResponse?.results?.success) {
             const payment = verifyResponse.results.payment;
-            setSubmitted(true);
-            toast.success(
-              "Membership payment successful! Thank you for your support!"
-            );
 
-            // Automatically download/open invoice
-            try {
-              const invoiceResponse = await fetch(
-                `/api/payments/invoice/${payment._id}`
-              );
-              const invoiceData = await invoiceResponse.json();
-
-              if (invoiceData.success) {
-                const invoiceWindow = window.open("", "_blank");
-                if (invoiceWindow) {
-                  invoiceWindow.document.write(invoiceData.invoiceHTML);
-                  invoiceWindow.document.close();
-                }
-              }
-            } catch {
-              toast.info("Invoice will be sent via email");
+            // Open invoice in new tab
+            if (payment.invoiceNumber) {
+              window.open(`/api/payments/invoice/${payment._id}`, "_blank");
             }
 
+            // Show success popup
+            await Swal.fire({
+              icon: "success",
+              title: "Payment Successful!",
+              html: `
+                <p class="text-lg mb-2">Thank you for your membership payment!</p>
+                <p class="text-gray-600">Amount: ₹${payment.amount.toLocaleString("en-IN")}</p>
+                <p class="text-gray-600 mt-2">Invoice has been sent to <strong>${payment.donorEmail}</strong></p>
+              `,
+              confirmButtonText: "Done",
+              confirmButtonColor: "#3b82f6",
+            });
+
+            // Reset form
             resetForm();
             setSelectedMemberId("");
-            setTimeout(() => {
-              setSubmitted(false);
-              window.location.href = "/";
-            }, 3000);
+            setIsProcessing(false);
           } else {
+            setIsProcessing(false);
             throw new Error("Payment verification failed");
           }
         },
         modal: {
-          ondismiss: () => {
-            toast.info("Payment cancelled");
-            setSubmitting(false);
+          ondismiss: async () => {
+            // Show processing state
+            setIsProcessing(true);
+
+            // Send retry email for the pending payment
+            try {
+              await mutation(`payments/${paymentId}/mark-cancelled`, {
+                method: "PATCH",
+                body: { reason: "User cancelled payment" },
+              });
+
+              // Show cancellation confirmation
+              await Swal.fire({
+                icon: "info",
+                title: "Payment Cancelled",
+                html: `
+                  <p class="text-lg mb-2">Your payment has been cancelled.</p>
+                  <p class="text-gray-600">We've sent you an email with a link to retry this payment anytime within the next 7 days.</p>
+                `,
+                confirmButtonText: "OK",
+                confirmButtonColor: "#3b82f6",
+              });
+            } catch (error) {
+              console.error("Failed to mark payment as cancelled:", error);
+              toast.error("Payment cancelled");
+            } finally {
+              setIsProcessing(false);
+              setSubmitting(false);
+            }
           },
         },
       });
@@ -335,25 +374,30 @@ const MemberPaymentPage = () => {
               transition={{ ...FADE_UP.transition, delay: 0.2 }}
             >
               <div className="bg-white rounded-3xl p-8 shadow-2xl">
-                {submitted ? (
+                {isProcessing ? (
                   <div className="text-center py-16">
                     <motion.div
                       initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: "spring", duration: 0.6 }}
+                      animate={{ scale: 1, rotate: 360 }}
+                      transition={{
+                        scale: { type: "spring", duration: 0.6 },
+                        rotate: {
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: "linear",
+                        },
+                      }}
                     >
-                      <CheckCircle
-                        className="mx-auto text-green-400 mb-6"
+                      <Loader2
+                        className="mx-auto text-blue-500 mb-6"
                         size={80}
                       />
                     </motion.div>
-                    <h3 className="text-3xl font-black text-white mb-4">
-                      Payment Successful!
+                    <h3 className="text-3xl font-black text-gray-800 mb-4">
+                      Processing Payment...
                     </h3>
-                    <p className="text-cyan-200 text-lg">
-                      Your membership payment has been processed.
-                      <br />
-                      Redirecting to home page...
+                    <p className="text-gray-600 text-lg">
+                      Please wait while we verify your payment.
                     </p>
                   </div>
                 ) : (

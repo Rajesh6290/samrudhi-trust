@@ -3,6 +3,7 @@ import crypto from "crypto";
 import connectDB from "@/lib/mongodb";
 import Payment from "@/models/Payment";
 import WebhookLog from "@/models/WebhookLog";
+import { sendImmediateRetryEmail } from "@/lib/sendImmediateRetryEmail";
 
 // Force dynamic rendering for this route
 export const dynamic = "force-dynamic";
@@ -118,6 +119,13 @@ async function handlePaymentFailed(payload: WebhookPayload) {
   payment.lastReconciliationDate = new Date();
 
   await payment.save();
+
+  // Send immediate retry email
+  try {
+    await sendImmediateRetryEmail(payment);
+  } catch (emailError) {
+    console.error("Failed to send immediate retry email:", emailError);
+  }
 
   // TODO: Send failure notification email to donor/member
   // TODO: If retryCount < maxRetries, send retry link

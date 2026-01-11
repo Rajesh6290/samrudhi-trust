@@ -5,7 +5,6 @@ import { Dialog } from "@mui/material";
 import {
   Calendar,
   CheckCircle,
-  Download,
   FileText,
   History,
   Mail,
@@ -119,103 +118,6 @@ export default function MemberPaymentDrawer({
       toast.error("Failed to download invoice");
     }
   };
-
-  const exportPDF = (type: "paid" | "unpaid") => {
-    const targetMembers = type === "paid" ? paidMembers : unpaidMembers;
-    const color = type === "paid" ? "#10b981" : "#ef4444";
-
-    const tableHTML = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>${type === "paid" ? "Paid" : "Unpaid"} Members - ${filterMonth}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: system-ui, -apple-system, sans-serif; padding: 40px; background: #f9fafb; }
-          .container { max-width: 1200px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-          h1 { color: ${color}; margin-bottom: 8px; font-size: 32px; font-weight: 700; }
-          .meta { color: #6b7280; margin-bottom: 24px; font-size: 14px; }
-          .stats { background: ${color}; color: white; padding: 24px; border-radius: 12px; margin-bottom: 32px; }
-          .stats h2 { font-size: 48px; margin: 0; font-weight: 700; }
-          .stats p { margin-top: 8px; opacity: 0.95; font-size: 16px; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { padding: 16px; text-align: left; border-bottom: 1px solid #e5e7eb; }
-          th { background: ${color}; color: white; font-weight: 600; font-size: 13px; letter-spacing: 0.5px; }
-          tbody tr:hover { background: #f9fafb; }
-          tbody tr:last-child td { border-bottom: none; }
-          .index { color: #9ca3af; font-weight: 600; }
-          @media print { body { padding: 0; } .container { box-shadow: none; } }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <h1>${type === "paid" ? "Paid" : "Unpaid"} Members Report</h1>
-          <p class="meta">${new Date(filterMonth).toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</p>
-          <div class="stats">
-            <h2>${targetMembers.length}</h2>
-            <p>Total ${type === "paid" ? "Paid" : "Unpaid"} Members</p>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th width="60">#</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                ${type === "paid" ? "<th>Payment Date</th><th>Amount</th>" : ""}
-              </tr>
-            </thead>
-            <tbody>
-              ${targetMembers
-                .map((member, index) => {
-                  const payment =
-                    type === "paid"
-                      ? payments.find((p) => {
-                          const paymentWithMember = p as Payment & {
-                            member?: { _id: string } | string;
-                          };
-                          const memberId =
-                            typeof paymentWithMember.member === "string"
-                              ? paymentWithMember.member
-                              : paymentWithMember.member?._id;
-                          return (
-                            memberId === member._id && p.status === "completed"
-                          );
-                        })
-                      : null;
-                  return `
-                  <tr>
-                    <td class="index">${index + 1}</td>
-                    <td><strong>${member.name}</strong></td>
-                    <td>${member.email}</td>
-                    <td>${member.phone || "N/A"}</td>
-                    ${
-                      type === "paid"
-                        ? `
-                      <td>${payment ? new Date(payment.paymentDate).toLocaleDateString("en-IN") : "N/A"}</td>
-                      <td><strong>₹${payment?.amount || 0}</strong></td>
-                    `
-                        : ""
-                    }
-                  </tr>
-                `;
-                })
-                .join("")}
-            </tbody>
-          </table>
-        </div>
-      </body>
-      </html>
-    `;
-
-    const printWindow = window.open("", "_blank");
-    if (printWindow) {
-      printWindow.document.write(tableHTML);
-      printWindow.document.close();
-      printWindow.print();
-    }
-  };
-
   const displayMembers =
     activeTab === "paid"
       ? paidMembers
@@ -291,7 +193,7 @@ export default function MemberPaymentDrawer({
               </div>
             </button>
 
-            <button
+            <div
               onClick={() => setActiveTab("paid")}
               className={`p-4 rounded-xl border-2 transition-all ${
                 activeTab === "paid"
@@ -313,18 +215,8 @@ export default function MemberPaymentDrawer({
                     {paidMembers.length}
                   </p>
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    exportPDF("paid");
-                  }}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  title="Export PDF"
-                >
-                  <Download className="w-4 h-4 text-gray-600" />
-                </button>
               </div>
-            </button>
+            </div>
 
             <button
               onClick={() => setActiveTab("unpaid")}
@@ -348,16 +240,6 @@ export default function MemberPaymentDrawer({
                     {unpaidMembers.length}
                   </p>
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    exportPDF("unpaid");
-                  }}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  title="Export PDF"
-                >
-                  <Download className="w-4 h-4 text-gray-600" />
-                </button>
               </div>
             </button>
           </div>

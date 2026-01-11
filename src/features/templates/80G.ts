@@ -3,8 +3,11 @@ interface Certificate80GData {
   organizationEmail: string;
   organizationPhone: string;
   organizationAddress: string;
+  organizationPan: string;
+  organizationGstin?: string;
   chairmanName: string;
   chairmanPhoto?: string;
+  logoUrl?: string;
   receiptNo: string;
   certificateNumber?: string;
   date: string;
@@ -286,7 +289,7 @@ export const invoice80GTemplate = (data: Certificate80GData) => {
             </div>
             
             <div class="logo">
-                <img src="/logo.svg" alt="Logo" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                <img src="${data.logoUrl || "/logo.svg"}" alt="Logo" style="max-width: 100%; max-height: 100%; object-fit: contain;">
             </div>
         </div>
         
@@ -334,7 +337,7 @@ export const invoice80GTemplate = (data: Certificate80GData) => {
         </table>
         
         <p class="tax-info">
-            Donations to <strong>${data.organizationName}</strong> qualify for deduction u/s 80G(5) of Income Tax Act 1961 vide Unique Registration Number AABTI1433NF20217 approved on August 31, 2021 which is valid until AY2026-27. This receipt is invalid in case of non-realization of the instrument or reversal of the credit/debit card charge or reversal of donation amount for any reason. IT PAN: AABTI1433N.
+            Donations to <strong>${data.organizationName}</strong> qualify for deduction u/s 80G(5) of Income Tax Act 1961 vide Unique Registration Number AABTI1433NF20217 approved on August 31, 2021 which is valid until AY2026-27. This receipt is invalid in case of non-realization of the instrument or reversal of the credit/debit card charge or reversal of donation amount for any reason. IT PAN: ${data.organizationPan}${data.organizationGstin ? ` | GSTIN: ${data.organizationGstin}` : ""}.
         </p>
         
         <p class="note">
