@@ -1,24 +1,12 @@
 {
     "crons": [
         {
-            "path": "/api/payments/cleanup-pending",
-            "schedule": "0 */6 * * *"
-        },
-        {
-            "path": "/api/payments/send-retry-emails",
-            "schedule": "0 9 * * *"
-        },
-        {
-            "path": "/api/audit-logs/cleanup-old",
+            "path": "/api/cron/daily-tasks",
             "schedule": "0 2 * * *"
         },
         {
-            "path": "/api/notifications/cleanup-old",
-            "schedule": "0 3 * * *"
-        },
-        {
-            "path": "/api/campaigns/update-status",
-            "schedule": "0 4 * * *"
+            "path": "/api/cron/periodic-tasks",
+            "schedule": "0 */6 * * *"
         }
     ]
 }
